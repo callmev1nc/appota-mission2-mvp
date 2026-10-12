@@ -1,6 +1,6 @@
 # Bộ kiểm thử Mission 2 — KẾT QUẢ CHẠY THẬT
 
-- Thời điểm chạy: 2026-10-12 22:52 (giây địa phương) · chế độ: `live: https://mission2mvp.vercel.app`
+- Thời điểm chạy: 2026-10-12 23:01 (giây địa phương) · chế độ: `live: https://mission2mvp.vercel.app`
 - Dữ liệu: `mission1-leave-synthetic-v1` · toàn bộ tổ chức/tài liệu là giả lập
 - Tổng kết: **6 ĐẠT** · **1 CHƯA ĐẠT theo thiết kế** · **0 lỗi kiểm thử** (7 ca)
 
