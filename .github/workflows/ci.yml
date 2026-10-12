@@ -57,6 +57,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install uv (Vercel Python builder bắt buộc khi build cục bộ)
+        run: python3 -m pip install --quiet uv
+
       - name: Pull Vercel project config
         run: npx --yes vercel@59 pull --yes --environment=production --token="$VERCEL_TOKEN"
 

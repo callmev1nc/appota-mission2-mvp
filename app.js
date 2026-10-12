@@ -75,7 +75,7 @@ function renderProfiles() {
       <div class="unit">${esc(p.unit_names.join(" → "))}</div>
       <div class="roles">${p.read_roles
         .map((r) => `<span class="role-tag ${r === "hr" ? "hr" : ""}">${esc(r)}</span>`)
-        .join("")}<span class="role-tag">${esc(p.employment_type)} · ${p.tenure_months}th</span></div>`;
+        .join("")}<span class="role-tag">${esc(p.employment_type)} · ${esc(p.tenure_months)}th</span></div>`;
     el.onclick = () => { state.selected = p.id; renderProfiles(); loadDocs(); };
     box.appendChild(el);
   }
@@ -151,7 +151,7 @@ function resultCard(r, colLabel) {
     .join("");
 
   const denied = ((r.trace || {}).read_denied_count || 0) > 0
-    ? `<div class="lock-note">🔒 ${r.trace.read_denied_count} tài liệu bị loại ngay ở bước phân quyền đọc —
+    ? `<div class="lock-note">🔒 ${esc(r.trace.read_denied_count)} tài liệu bị loại ngay ở bước phân quyền đọc —
          chi tiết (mã/tiêu đề) không được hiển thị cho hồ sơ này.</div>`
     : "";
 

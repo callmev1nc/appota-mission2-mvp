@@ -86,9 +86,14 @@ def _documents_payload(profile_id: str | None) -> dict:
         if profile and profile.get("unit_path"):
             readable = set(profile.get("read_roles", [])) & set(d.get("read_roles", []))
             if not readable:
-                row["visibility"] = "restricted"
-                row["title"] = "(không hiển thị cho hồ sơ này)"
-                row.pop("kind", None)
+                # tài liệu ngoài quyền: ẩn toàn bộ metadata — kể cả mã, chỉ ghi có "bị hạn chế"
+                docs.append({
+                    "id": "(bị hạn chế)",
+                    "title": "(không hiển thị cho hồ sơ này)",
+                    "unit_name": "(ẩn)",
+                    "visibility": "restricted",
+                })
+                continue
             else:
                 included, reasons = _base_filter(
                     d, profile, profile["unit_path"], _eval_date()
@@ -127,11 +132,21 @@ async def documents(profile_id: str = ""):
 @app.post("/api/ask")
 async def ask_endpoint(request: Request):
     body = await request.json()
-    question = (body.get("question") or "").strip()
+    raw_q = body.get("question")
+    question = raw_q.strip() if isinstance(raw_q, str) else ""
     if not question:
         return {"error": "question_required"}
     profile_id = body.get("profile_id") or ""
     date = body.get("date") or None
+    if date is not None:
+        import datetime as _dt
+
+        if not isinstance(date, str):
+            return {"error": "invalid_date"}
+        try:
+            _dt.date.fromisoformat(date)
+        except ValueError:
+            return {"error": "invalid_date"}
     mode = body.get("llm") or "auto"  # auto | template | gemini
     simulate = body.get("simulate") or []
 

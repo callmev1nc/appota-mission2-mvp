@@ -1,5 +1,7 @@
 # Mission 2 — Hiện thực hóa: trả lời đúng tri thức theo đúng người hỏi
 
+[![CI/CD](https://github.com/callmev1nc/appota-mission2-mvp/actions/workflows/ci.yml/badge.svg)](https://github.com/callmev1nc/appota-mission2-mvp/actions/workflows/ci.yml)
+
 **Demo:** https://mission2mvp.vercel.app · **Repo:** https://github.com/callmev1nc/appota-mission2-mvp (public, không chứa API key / mật khẩu / dữ liệu thật — đã quét gitleaks trước khi push).
 Toàn bộ tổ chức, tài liệu, con số là **dữ liệu giả lập** — không phải chính sách Appota và không phải tư vấn pháp luật.
 
@@ -88,6 +90,33 @@ Kết quả trong [`tests/results.md`](tests/results.md):
 
 Tổng: **6 ĐẠT · 1 CHƯA ĐẠT theo thiết kế · 0 lỗi kiểm thử** (cả offline lẫn trên bản deploy).
 
+**CI/CD (GitHub Actions — `.github/workflows/ci.yml`):**
+
+```
+push / PR ─→ [test]   compile + import · gitleaks toàn lịch sử · 7 ca offline
+              └→ [deploy] uv + vercel build --prod → Vercel production   (chỉ nhánh main)
+                   └→ [live] smoke endpoint · 7 ca trên bản deploy · quét rò rỉ D09/canary
+```
+
+Mỗi lần push vào `main` tự chạy đủ: quét secret (chặn), test, deploy, rồi kiểm thử lại
+trên bản deploy thật. Token Vercel chỉ nằm trong GitHub Secrets (`VERCEL_TOKEN`,
+`VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`) — không bao giờ có trong file.
+
+**Kiểm thử đa tác tử — 3 pin chạy độc lập trên bản deploy + oracle 24 ca:**
+
+| Pin | Phạm vi | Script | Kết quả |
+|---|---|---|---|
+| A — đúng giả thuyết | Đối chiếu **toàn bộ 24 ca oracle** (kỳ vọng Mission 1) với engine | `tests/reports/agentA_oracle.py` | **16 PASS · 8 PASS+ · 0 FAIL** |
+| B — bảo mật | gitleaks lịch sử, leak battery (4 câu hỏi × 3 hồ sơ), adversarial X01–X04/P04, malformed, CORS | `tests/reports/agentB_security.py` | **0 vấn đề** |
+| C — smoke | tĩnh + contract API + 4 mốc hiệu lực + chế độ LLM + anti-XSS + latency | `tests/reports/agentC_smoke.py` | **28/28 PASS** (avg 333ms, worst 412ms) |
+
+Báo cáo chi tiết: [`tests/reports/`](tests/reports/). Các pin đã **tìm và sửa thật**:
+echo câu hỏi bị gỡ khỏi response (ngăn echo chuỗi cấm), `/api/documents` che luôn *id*
+của tài liệu hạn chế, validate `question`/`date` (trước đây 500), phân loại câu hỏi
+“định mức/nhóm”, escalate khi thiếu dữ liệu, tách marker HR khỏi phần quyền lợi (P02).<br>
+“PASS+” = engine trả đúng mọi dữ kiện oracle yêu cầu nhưng trích thêm nguồn hợp lệ
+(superset, không mâu thuẫn) — do engine mở rộng cụm thủ tục khi hỏi cấp đơn vị.
+
 ## 4 · Quyết định chính và đánh đổi
 
 | Quyết định | Vì sao | Đánh đổi |
@@ -104,8 +133,8 @@ Tổng: **6 ĐẠT · 1 CHƯA ĐẠT theo thiết kế · 0 lỗi kiểm thử**
 2. **Một chủ đề** (nghỉ phép) — metadata model đủ chung cho chủ đề khác nhưng chưa tích hợp.
 3. **Dữ liệu giả lập** — không xác nhận chính sách Appota hay bất kỳ thực tế nào.
 4. **LLM template** là mặc định khi chưa set `GEMINI_API_KEY`; Gemini free tier có rate limit.
-5. **Chưa kiểm thử adversarial rộng** — 7 ca tối thiểu của Mission 2, bộ 24 ca gốc là kỳ vọng thiết kế.
-6. **Prompt injection** được kiểm bằng guard + test mẫu, chưa red-team.
+5. **Adversarial có giới hạn** — đã chạy battery 24 ca oracle (`agentA_oracle.py`) và pin bảo mật (leak/adversarial/malformed) thật trên deploy, nhưng chưa red-team mở rộng (fuzz, đo rate limit, thử đa người dùng thật).
+6. **Prompt injection** được kiểm bằng guard + test mẫu (T05, X01–X04) chạy thật, chưa red-team bằng người.
 
 ## 6 · Ba câu hỏi bắt buộc
 
@@ -116,7 +145,8 @@ kết luận hoặc từ chối. Nếu phần này đúng, mọi lỗi “trả 
 tắt mà kết luận không đổi (ca C04 chứng minh điều đó).
 
 **② Đổi gì so với Mission 1?** → (a) Từ “24 ca là kỳ vọng trên giấy” thành **7 ca chạy thật**
-và cả 24 fixture đều giữ nguyên làm oracle; (b) thiết kế “một app Python” thành
+và cả 24 fixture giữ nguyên làm oracle — nay đã được đối chiếu thật bằng
+`tests/reports/agentA_oracle.py` (0 FAIL); (b) thiết kế “một app Python” thành
 **engine Python + API Vercel + trang tĩnh** để có link demo; (c) thêm **template fallback +
 content guard** — Mission 1 chưa có lớp chặn rò rỉ sau khi LLM sinh văn bản;
 (d) trace theo từng section thay vì cả tài liệu — phát hiện khi dựng assertion cho T01

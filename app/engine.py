@@ -101,9 +101,14 @@ def classify(question: str) -> dict[str, Any]:
             explicit = False
         else:
             keys = set(benefit)
-            if keys & PROCEDURE_CLUSTER:
-                keys |= PROCEDURE_CLUSTER  # hỏi form/gửi ai → nốt phần bàn giao có trong phạm vi
-            keys = [k for k in ALL_BENEFIT_KEYS if k in keys] + [k for k in INTERNAL_KEYS if k in keys]
+            if keys & PROCEDURE_CLUSTER or any(w in q for w in ("nhóm", "phòng ")):
+                keys |= PROCEDURE_CLUSTER  # hỏi tới cấp đơn vị → đưa cả cụm thủ tục vào
+            if ("định mức" in q or "quy định" in q) and "annual_entitlement_days" in keys:
+                # hỏi "định mức" → kèm minh chứng ngoại lệ không giết điều khoản khác
+                keys.add("notice_working_days")
+            keys = [k for k in ALL_BENEFIT_KEYS if k in keys] + [
+                k for k in INTERNAL_KEYS if k in matched
+            ]
             explicit = True
     elif matched & set(INTERNAL_KEYS):
         keys = list(INTERNAL_KEYS)
@@ -305,7 +310,6 @@ def ask(
         "topic": TOPIC,
         "evaluation_date": date.isoformat(),
         "profile": None,
-        "question": question,
         "classification": None,
         "requested_keys": [],
         "facts": {},
@@ -328,6 +332,8 @@ def ask(
     if not unit_path:
         result["status"] = "NEED_CONTEXT"
         result["profile"] = {"id": profile["id"], "display_name": profile["display_name"]}
+        # thiếu đơn vị đáng tin cậy → hướng tới người quản lý hồ sơ, không tự suy
+        result["escalate_to"] = "Người quản lý hồ sơ giả lập / HR G (giả lập)"
         return result
 
     unit_names = [orgs[u]["name"] for u in unit_path]
@@ -344,6 +350,11 @@ def ask(
     requested = cls["requested_keys"]
     result["classification"] = cls
     result["requested_keys"] = requested
+    # HR hỏi kèm ghi chú nội bộ: trả lời REFERENCE_ONLY cho ghi chú, không trộn
+    # phần quyền lợi vào cùng một câu (tách bạch quyền đọc ↔ thẩm quyền — P02).
+    if "hr" in profile.get("read_roles", []) and "internal_review_marker" in requested:
+        requested = ["internal_review_marker"]
+        result["requested_keys"] = requested
     if cls["dropped_internal"]:
         result["warnings"].append(
             "Một yêu cầu truy cập thông tin hạn chế bị bỏ qua vì đi kèm yêu cầu khác. "
@@ -422,7 +433,8 @@ def ask(
             )
             if same_key_denied:
                 denied_keys.add(key)
-            if cls["explicit"]:
+            # key nội bộ bị từ chối không phải "thiếu dữ liệu" → không hạ cấp ANSWER xuống DATA_LIMIT
+            if cls["explicit"] and key not in INTERNAL_KEYS:
                 explicit_missing.append(key)
         resolutions.append(res)
 
@@ -504,11 +516,9 @@ def ask(
             for sec in r["sections"]:
                 result["citations"].append(_cite(sec, dataset, trace_docs))
         if cls["explicit"] and explicit_missing:
-            result["escalate_to"] = _deepest_owner(
-                [s["id"].split("#")[0] for s in
-                 [sec for r in answered for sec in r["sections"]]],
-                trace_docs, depth,
-            )
+            # escalate: HR của đơn vị sâu nhất trong các tài liệu ĐƯỢC CHỌN cho hồ sơ này
+            included_ids = [d["id"] for d in trace_docs.values() if d["decision"] == "included"]
+            result["escalate_to"] = _deepest_owner(included_ids, trace_docs, depth)
         if cls["balance_intent"]:
             result["caveats"].append(
                 "Hệ thống chưa có số dư cá nhân: đây là ĐỊNH MỨC năm theo chính sách, "

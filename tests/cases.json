@@ -86,15 +86,15 @@
       "simulate": [],
       "expect": {
         "status": "ANSWER",
-        "facts": {"annual_entitlement_days": 14},
-        "citation_ids": ["D03#s1"],
+        "facts": {"annual_entitlement_days": 14, "notice_working_days": 3},
+        "citation_ids": ["D01#s3", "D03#s1"],
         "forbidden_anywhere": ["D09", "HR_CANARY_7F2A_SYNTHETIC"],
         "trace_contains": [
           {"id": "D02", "decision": "excluded", "reason": "expired"},
           {"id": "D04", "decision": "excluded", "reason": "not_yet_effective"}
         ]
       },
-      "expectation_text": "Vẫn 14 ngày [D03#s1] tại mốc 31/10; D04 (15 ngày, hiệu lực 01/11) bị loại vì chưa tới ngày; D02 đã hết hạn 31/08.",
+      "expectation_text": "Vẫn 14 ngày [D03#s1] tại mốc 31/10 kèm bằng chứng điều khoản khác không đổi (báo trước 3 ngày [D01#s3]); D04 (15 ngày, hiệu lực 01/11) bị loại vì chưa tới ngày; D02 đã hết hạn 31/08.",
       "learning": "Mới hơn không có nghĩa là có hiệu lực — bộ lọc hiệu lực phải chạy trước, độc lập với câu hỏi."
     },
     {

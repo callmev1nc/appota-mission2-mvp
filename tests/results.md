@@ -1,6 +1,6 @@
 # Bộ kiểm thử Mission 2 — KẾT QUẢ CHẠY THẬT
 
-- Thời điểm chạy: 2026-10-12 23:01 (giây địa phương) · chế độ: `live: https://mission2mvp.vercel.app`
+- Thời điểm chạy: 2026-10-12 23:44 (giây địa phương) · chế độ: `offline (import engine trực tiếp)`
 - Dữ liệu: `mission1-leave-synthetic-v1` · toàn bộ tổ chức/tài liệu là giả lập
 - Tổng kết: **6 ĐẠT** · **1 CHƯA ĐẠT theo thiết kế** · **0 lỗi kiểm thử** (7 ca)
 
@@ -67,13 +67,14 @@ Gõ riêng một điều khoản không xung đột (vd: thời gian báo trư�
 
 ### T04-V03 — Xử lý phiên bản: bản mới hơn nhưng chưa tới ngày hiệu lực
 
-**Kỳ vọng:** Vẫn 14 ngày [D03#s1] tại mốc 31/10; D04 (15 ngày, hiệu lực 01/11) bị loại vì chưa tới ngày; D02 đã hết hạn 31/08.
+**Kỳ vọng:** Vẫn 14 ngày [D03#s1] tại mốc 31/10 kèm bằng chứng điều khoản khác không đổi (báo trước 3 ngày [D01#s3]); D04 (15 ngày, hiệu lực 01/11) bị loại vì chưa tới ngày; D02 đã hết hạn 31/08.
 
-**Thực tế:** trạng thái `ANSWER` · facts `{"annual_entitlement_days": 14}` · nguồn `D03#s1`
+**Thực tế:** trạng thái `ANSWER` · facts `{"annual_entitlement_days": 14, "notice_working_days": 3}` · nguồn `D03#s1, D01#s3`
 
 > Kết luận theo hồ sơ của bạn (Tập đoàn Mô Phỏng → Công ty An → Kế toán → Công nợ) · xét ngày 2026-10-31:
 • Số ngày phép: 14 ngày/năm [D03#s1]
-Nguồn: D03#s1
+• Báo trước: 3 ngày làm việc [D01#s3]
+Nguồn: D01#s3, D03#s1
 Chỉ dùng dữ liệu giả lập; không phải chính sách Appota thật.
 
 **Đạt/Chưa đạt:** ĐẠT
