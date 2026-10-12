@@ -43,6 +43,9 @@
 - Mở `tests/results.md` (bản --live): **6 ĐẠT · 1 CHƯA ĐẠT theo thiết kế · 0 lỗi**,
   chạy cả offline lẫn trên bản deploy.
 - “Mỗi ca ghi: Kỳ vọng → Thực tế → Đạt/Chưa → Điều học được.”
+- Nếu còn ~15s: “Làm thêm CI/CD + 3 pin kiểm thử độc lập: đối chiếu **24 ca oracle → 0 FAIL**,
+  pin bảo mật → **0 vấn đề**, pin smoke → **28/28** — mỗi push GitHub Actions tự
+  quét secret → test → deploy → test lại trên bản deploy.”
 
 ## 4:50–5:00 · Hạn chế (10s)
 

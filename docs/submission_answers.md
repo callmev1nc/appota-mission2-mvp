@@ -13,7 +13,12 @@
 > chuyển HR Bình. Chạy local: `pip install -r requirements.txt && uvicorn api.index:app --port 8000`.
 > Kiểm thử thật: `python -X utf8 tests/run_tests.py --live https://mission2mvp.vercel.app`
 > → 6 ĐẠT, 1 CHƯA ĐẠT theo thiết kế (hỏi số dư phép — MVP chưa có HRIS), 0 lỗi;
-> chi tiết `tests/results.md`. Quyết định đã đổi so với Mission 1: thêm template fallback +
+> chi tiết `tests/results.md`. Đối chiếu thêm **toàn bộ 24 ca oracle Mission 1** bằng
+> `tests/reports/agentA_oracle.py` → 0 FAIL, cùng 2 pin kiểm thử độc lập (bảo mật:
+> `agentB_security.py` 0 vấn đề; smoke/contract/latency: `agentC_smoke.py` 28/28 PASS).
+> CI/CD GitHub Actions chạy mỗi push: gitleaks → 7 ca offline → deploy Vercel →
+> kiểm thử lại trên bản deploy (token chỉ trong GitHub Secrets, không trong repo).
+> Quyết định đã đổi so với Mission 1: thêm template fallback +
 > content guard chặn rò rỉ, truy vết theo từng section thay vì cả tài liệu. Hạn chế đã biết:
 > chưa SSO/HRIS, một chủ đề (nghỉ phép), dữ liệu giả lập 100%, LLM template là mặc định khi
 > chưa set GEMINI_API_KEY. Repo public, không chứa API key hay dữ liệu thật.
@@ -38,9 +43,12 @@
 ### ② So với kế hoạch Mission 1, đã thay đổi quyết định/thiết kế nào? Điều gì khiến đổi?
 
 > 1. **Từ kỳ vọng trên giấy sang chạy thật:** Mission 1 có 24 ca trạng thái `NOT_EXECUTED`.
->    Tôi không làm đủ 24 mà chọn **7 ca đại diện chạy thật trên sản phẩm** (6 ĐẠT, 1 CHƯA ĐẠT
->    theo thiết kế) và giữ nguyên 24 fixture làm oracle — vì đề khuyến khích “mảnh nhỏ chứng
->    minh đúng giả thuyết” hơn sản phẩm nhiều tính năng.
+>    Sản phẩm có **7 ca đại diện chạy thật** (6 ĐẠT, 1 CHƯA ĐẠT theo thiết kế) — và khi làm
+>    CI/CD + kiểm thử đa tác tử, tôi đã đối chiếu **toàn bộ 24 ca oracle** bằng
+>    `tests/reports/agentA_oracle.py`: **0 FAIL** (8 ca PASS+ — engine trích thêm nguồn hợp
+>    lệ ngoài oracle, superset không mâu thuẫn), nhờ đó bắt và sửa thật được 6 lỗi
+>    (rò metadata id, echo chuỗi bị cấm, validate question/date, phân loại “định mức/nhóm”,
+>    escalate khi thiếu dữ liệu, tách marker HR khỏi phần quyền lợi).
 > 2. **Kiến trúc một app Python → engine Python + Vercel + trang tĩnh:** để có link demo online
 >    đúng yêu cầu, tôi tách engine (thuần, test được offline) khỏi API/giao diện. Điều kiện
 >    thực tế (cần link `.vercel.app`, 3 ngày) buộc quyết định này.
@@ -64,8 +72,9 @@
 > thống vẫn “tự tin”: nếu D03 mất trường `approved_overrides`, engine sẽ thấy hai định mức cùng
 > hiệu lực ở An và **phải** báo CONFLICT thay vì âm thầm chọn 14 (hoặc “mới hơn thắng”, hoặc
 > quay về 12). Kiểm soát: quy tắc chỉ tôn trọng quan hệ khai báo có `approved_by` + phạm vi;
-> có fixture sửa đổi (C02 trong bộ kỳ vọng) chờ chạy; và README ghi rõ “dữ liệu sai → kết quả
-> sai dù quy tắc đúng”.
+> và đã **chạy thật** bằng bản sao dataset thiếu `approved_overrides` (C02 trong
+> `agentA_oracle.py`): engine ra CONFLICT với đúng hai nguồn D01#s2 + D03#s1, chuyển HR An,
+> không kết luận — đúng như thiết kế. README ghi rõ “dữ liệu sai → kết quả sai dù quy tắc đúng”.
 >
 > **(b) Rò rỉ tài liệu hạn chế qua metadata/trace** — câu trả lời có thể sạch mà response vẫn
 > lộ “D09 tồn tại” qua danh sách trace. Kiểm soát: chặn **ngay ở tầng đọc quyền** (tài liệu
@@ -75,5 +84,8 @@
 >
 > **(c) Prompt injection đổi quyền** (X04): câu hỏi là dữ liệu — phân loại yêu cầu nội bộ bị
 > gạt bỏ khi đi kèm yêu cầu quyền lợi, danh tính lấy từ hồ sơ đã chọn, không suy từ câu chữ.
-> Phát hiện: 7 ca có 2 ca adversarial/rò rỉ chạy cả offline lẫn trên bản deploy, chạy lại
-> bằng `run_tests.py --live` trước mỗi lần nộp.
+> Phát hiện: 7 ca chính có 2 ca adversarial/rò rỉ chạy cả offline lẫn trên bản deploy, cộng
+> battery bảo mật độc lập (`agentB_security.py`): 4 câu hỏi dò tài liệu hạn chế × 3 hồ sơ
+> không-HR → 0 chuỗi cấm, X01–X04/P04 + payload hỏng (question số, ngày sai, hồ sơ lạ)
+> không leak và không 500, quét gitleaks cả lịch sử commit → sạch. CI chạy lại toàn bộ
+> này trên mỗi push trước khi deploy.
