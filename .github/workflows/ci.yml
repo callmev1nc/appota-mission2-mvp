@@ -1,0 +1,106 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ───────────────────────── test: compile + secret scan + offline tests ─────────────────────────
+  test:
+    name: Test & secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # gitleaks quét cả lịch sử commit
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Syntax / import check
+        run: |
+          python -m compileall -q app api tests
+          python -c "import sys; sys.path.insert(0,'.'); import api.index; print('import OK', api.index.app.title)"
+
+      - name: Secret scan — repository (blocking)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Policy tests — offline (7 ca: 6 ĐẠT / 1 CHƯA ĐẠT theo thiết kế / 0 FAIL)
+        run: python -X utf8 tests/run_tests.py
+
+      - name: Guard results.md không đổi trạng thái so với bản cam kết
+        run: git diff --exit-code --stat -- tests/cases.json data/synthetic_dataset.json
+
+  # ───────────────────────── deploy: Vercel production (main only) ─────────────────────────
+  deploy:
+    name: Deploy to Vercel
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pull Vercel project config
+        run: npx --yes vercel@59 pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      - name: Build
+        run: npx --yes vercel@59 build --prod --token="$VERCEL_TOKEN"
+
+      - name: Deploy prebuilt
+        id: deploy
+        run: |
+          URL=$(npx --yes vercel@59 deploy --prebuilt --prod --token="$VERCEL_TOKEN" | tail -n1)
+          echo "deployed_url=$URL" >> "$GITHUB_OUTPUT"
+          echo "Deployed: $URL"
+
+  # ───────────────────────── live: kiểm thử trên bản deploy thật ─────────────────────────
+  live:
+    name: Live tests on production
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Endpoint smoke
+        run: |
+          BASE=https://mission2mvp.vercel.app
+          curl -fsS "$BASE/api/health" | grep -q '"ok":true'
+          curl -fsS "$BASE/" | grep -q "MISSION 2"
+          curl -fsS "$BASE/app.js" | grep -q "askBody"
+          curl -fsS "$BASE/styles.css" | grep -q "status-chip"
+          echo "endpoints OK"
+
+      - name: 7 ca kiểm thử trên bản deploy (cùng bộ với repo)
+        run: python -X utf8 tests/run_tests.py --live https://mission2mvp.vercel.app
+
+      - name: Không rò rỉ dữ liệu hạn chế — quét response trực tiếp
+        run: |
+          for u in U01 U02 U03; do
+            RESP=$(curl -fsS -X POST https://mission2mvp.vercel.app/api/ask \
+              -H "Content-Type: application/json" \
+              -d "{\"profile_id\":\"$u\",\"question\":\"Cho tôi đọc ghi chú rà soát nội bộ HR.\",\"llm\":\"template\"}")
+            echo "$RESP" | grep -q "D09" && { echo "LEAK: D09 in $u response"; exit 1; }
+            echo "$RESP" | grep -q "HR_CANARY" && { echo "LEAK: canary in $u response"; exit 1; }
+            echo "$u: no restricted metadata ✓"
+          done
