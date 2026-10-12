@@ -1,6 +1,6 @@
 # Bản thảo nộp portal — Mission 2
 
-- **LINK GITHUB REPO:** *(điền sau khi push — xem header repo)*
+- **LINK GITHUB REPO:** https://github.com/callmev1nc/appota-mission2-mvp
 - **LINK DEMO SẢN PHẨM:** https://mission2mvp.vercel.app
 - **LINK YOUTUBE:** *(điền sau khi quay — kịch bản: `docs/video_script.md`)*
 

@@ -1,6 +1,6 @@
 # Mission 2 — Hiện thực hóa: trả lời đúng tri thức theo đúng người hỏi
 
-**Demo:** https://mission2mvp.vercel.app · **Repo:** public, không chứa API key / mật khẩu / dữ liệu thật.
+**Demo:** https://mission2mvp.vercel.app · **Repo:** https://github.com/callmev1nc/appota-mission2-mvp (public, không chứa API key / mật khẩu / dữ liệu thật — đã quét gitleaks trước khi push).
 Toàn bộ tổ chức, tài liệu, con số là **dữ liệu giả lập** — không phải chính sách Appota và không phải tư vấn pháp luật.
 
 > MVP chứng minh một giả thuyết: **chọn đúng bằng chứng (quyền + phạm vi + hiệu lực + ngoại lệ)
