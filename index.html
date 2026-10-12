@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mission 2 MVP — Trí thức nội bộ theo đúng người hỏi</title>
+<meta name="description" content="Prototype: cùng câu hỏi, hai hồ sơ khác đơn vị → kết quả khác nhau theo quyền và hiệu lực. Dữ liệu giả lập." />
+<link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">A×N</span>
+    <div>
+      <h1>AGENTLIZE × NEXTGEN 2026 · MISSION 2</h1>
+      <p>Hiện thực hóa — trả lời đúng tri thức, đúng bối cảnh, đúng phạm vi</p>
+    </div>
+  </div>
+  <span class="chip chip-warn">DỮ LIỆU GIẢ LẬP — không phải chính sách Appota thật</span>
+</header>
+
+<main class="layout">
+  <!-- ===================== CỘT TRÁI: bối cảnh người hỏi ===================== -->
+  <aside class="panel controls">
+    <section>
+      <h2>1 · Hồ sơ người hỏi <span class="hint">bối cảnh cố định, câu hỏi không đổi quyền</span></h2>
+      <div id="profiles" class="profile-list"><p class="muted">Đang tải hồ sơ…</p></div>
+    </section>
+
+    <section>
+      <h2>2 · Ngày xét hiệu lực</h2>
+      <input type="date" id="ask-date" value="2026-10-07" />
+      <p class="hint">Mốc mặc định 07/10/2026 (giây đánh giá của bộ dữ liệu).</p>
+    </section>
+
+    <section>
+      <h2>3 · Câu hỏi</h2>
+      <textarea id="question" rows="3" placeholder="VD: Quy định nghỉ phép của tôi như thế nào?"></textarea>
+      <button id="btn-ask" class="btn primary">Hỏi với hồ sơ đã chọn</button>
+      <button id="btn-compare" class="btn">🔬 Cùng câu hỏi — 2 người khác đơn vị</button>
+    </section>
+
+    <section>
+      <h2>Tình huống mẫu</h2>
+      <div class="example-list" id="examples"></div>
+    </section>
+  </aside>
+
+  <!-- ===================== CỘT PHẢI: kết quả ===================== -->
+  <section class="results">
+    <div id="compare-head" class="compare-head hidden">
+      <h2 id="compare-title">Cùng câu hỏi · hai bối cảnh</h2>
+      <div class="compare-grid" id="compare-grid"></div>
+    </div>
+    <div id="single-result"></div>
+
+    <details class="panel docs-panel">
+      <summary>Danh mục tài liệu theo góc nhìn hồ sơ đang chọn</summary>
+      <div id="docs-list" class="muted">Chưa tải.</div>
+    </details>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="footer-grid">
+    <div>
+      <h3>Vòng lõi đã chứng minh</h3>
+      <p>Câu hỏi + bối cảnh người dùng → lọc quyền đọc → phạm vi &amp; hiệu lực →
+      resolve ngoại lệ/thay thế → câu trả lời có nguồn — <strong>quy tắc trước, LLM diễn đạt sau</strong>.</p>
+    </div>
+    <div>
+      <h3>Hạn chế đã biết</h3>
+      <p>Chưa có SSO/HRIS (không tính số dư phép thật) · một chủ đề (nghỉ phép) ·
+      dữ liệu giả lập · LLM là Gemini free-tier, không có key thì chạy template bám nguyên văn nguồn.</p>
+    </div>
+    <div>
+      <h3>Kiểm thử</h3>
+      <p>7 ca chạy thật trong <code>tests/results.md</code> (6 ĐẠT · 1 CHƯA ĐẠT theo thiết kế).
+      Nguồn: <a href="https://github.com/" id="repo-link">GitHub repository</a>.</p>
+    </div>
+  </div>
+</footer>
+
+<script src="/app.js"></script>
+</body>
+</html>
