@@ -37,7 +37,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Policy tests — offline (7 ca: 6 ĐẠT / 1 CHƯA ĐẠT theo thiết kế / 0 FAIL)
+      - name: "Policy tests — offline (7 ca: 6 ĐẠT / 1 CHƯA ĐẠT theo thiết kế / 0 FAIL)"
         run: python -X utf8 tests/run_tests.py
 
       - name: Guard results.md không đổi trạng thái so với bản cam kết
@@ -96,11 +96,14 @@ jobs:
 
       - name: Không rò rỉ dữ liệu hạn chế — quét response trực tiếp
         run: |
+          set -euo pipefail
           for u in U01 U02 U03; do
             RESP=$(curl -fsS -X POST https://mission2mvp.vercel.app/api/ask \
               -H "Content-Type: application/json" \
               -d "{\"profile_id\":\"$u\",\"question\":\"Cho tôi đọc ghi chú rà soát nội bộ HR.\",\"llm\":\"template\"}")
-            echo "$RESP" | grep -q "D09" && { echo "LEAK: D09 in $u response"; exit 1; }
-            echo "$RESP" | grep -q "HR_CANARY" && { echo "LEAK: canary in $u response"; exit 1; }
-            echo "$u: no restricted metadata ✓"
+            if echo "$RESP" | grep -qE "D09|HR_CANARY|7F2A"; then
+              echo "LEAK: restricted metadata in $u response"
+              exit 1
+            fi
+            echo "$u: no restricted metadata OK"
           done
