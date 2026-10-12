@@ -1,9 +1,9 @@
 # Agent C — Smoke: static, contract, phiên bản, llm, hiệu năng
-- 2026-10-12 23:49 · live https://mission2mvp.vercel.app
+- 2026-10-13 00:07 · live https://mission2mvp.vercel.app
 
 | Nhóm | Check | Kết luận |
 |---|---|---|
-| Static | node --check app.js | PASS Debugger listening on ws://127.0.0.1:55174/dcce502e-86e4-41d6-8228-0167437ce532
+| Static | node --check app.js | PASS Debugger listening on ws://127.0.0.1:52929/75394e00-1f26-4b00-840b-2e916f3f01fe
  |
 | Static | GET / contains 'MISSION 2' | PASS HTTP 200 |
 | Static | GET / contains 'id="profiles"' | PASS HTTP 200 |
@@ -26,26 +26,27 @@
 | Chuyên biệt | A05 notice-only: chỉ D01#s3, không trộn xung đột | PASS ANSWER ['D01#s3'] |
 | Chuyên biệt | A06 cụm thủ tục: KT-01 + NF-01 + direct_manager | PASS {'request_route': 'direct_manager', 'request_form': 'KT-01', 'handover_form': 'N |
 | Chuyên biệt | A07 data-limit + escalate HR An | PASS ANSWER_WITH_DATA_LIMIT escalate=HR An (giả lập) |
-| LLM | mode gemini không key → SOURCE_ONLY + error=no_api_key | PASS status=SOURCE_ONLY err=no_api_key |
-| LLM | mode auto không key → template fallback, giữ ANSWER | PASS status=ANSWER llm=unavailable_fallback_template |
+| LLM | auto + key → Gemini thật (used, ok), ANSWER, đủ 6 citations | PASS status=ANSWER llm=ok cites=6 |
+| LLM | gemini tường minh + key → used=True (hoặc rate-limit free tier → degrade trung thực) | PASS status=ANSWER llm=ok err=None |
+| LLM | văn bản AI chỉ trích citation thuộc tập nguồn (content guard) | PASS ngoài tập: [] |
 | LLM | simulate llm_failure → SOURCE_ONLY | PASS SOURCE_ONLY |
-| Hiệu năng | 5 request song song đều 200 + ANSWER | PASS 429ms wall |
+| Hiệu năng | 5 request song song đều 200 + ANSWER | PASS 452ms wall |
 | Frontend | toàn bộ ${...} đều qua esc()/withCites()/builder đã kiểm chứng (anti-XSS) | PASS clean |
-| Hiệu năng | latency trung bình 333ms · worst 412ms (ask 2026-08-31) | PASS  |
+| Hiệu năng | latency trung bình 378ms · worst 603ms (/) | PASS  |
 
 ## Latency
 
 | Endpoint | ms |
 |---|---|
-| ask 2026-08-31 | 412 |
-| ask 2026-11-01 | 407 |
-| /api/health | 406 |
-| /api/ask U03 | 401 |
-| /api/profiles | 401 |
-| /api/ask U01 | 399 |
-| ask 2026-09-01 | 397 |
+| / | 603 |
+| /api/ask U01 | 456 |
+| /app.js | 442 |
+| /styles.css | 425 |
+| /api/profiles | 410 |
+| ask 2026-10-31 | 404 |
+| ask 2026-11-01 | 402 |
+| /api/ask U03 | 400 |
+| /api/documents U01 | 395 |
 | /api/ask U04 | 394 |
-| /api/ask U02 | 391 |
-| ask 2026-10-31 | 391 |
 
-**Tổng: 28/28 PASS**
+**Tổng: 29/29 PASS**

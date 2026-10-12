@@ -20,8 +20,10 @@
 > kiểm thử lại trên bản deploy (token chỉ trong GitHub Secrets, không trong repo).
 > Quyết định đã đổi so với Mission 1: thêm template fallback +
 > content guard chặn rò rỉ, truy vết theo từng section thay vì cả tài liệu. Hạn chế đã biết:
-> chưa SSO/HRIS, một chủ đề (nghỉ phép), dữ liệu giả lập 100%, LLM template là mặc định khi
-> chưa set GEMINI_API_KEY. Repo public, không chứa API key hay dữ liệu thật.
+> chưa SSO/HRIS, một chủ đề (nghỉ phép), dữ liệu giả lập 100%, bản demo dùng Gemini free tier
+> (`gemini-flash-lite-latest`) với fallback template khi rate limit — local chưa set key thì
+> luôn là template. Repo public, không chứa API key hay dữ liệu thật (key chỉ nằm trong
+> Vercel Secret phía server).
 
 ## 3 câu hỏi bắt buộc
 

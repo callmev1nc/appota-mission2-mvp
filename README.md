@@ -66,8 +66,10 @@ pip install -r requirements.txt
 uvicorn api.index:app --port 8000        # mở http://localhost:8000
 ```
 
-Không cần key nào để chạy. Có key Gemini free tier thì set `GEMINI_API_KEY`
-(xem `.env.example`); không set → hệ thống dùng template bám nguyên văn nguồn.
+Không cần key nào để chạy local. **Bản demo trên Vercel đã set `GEMINI_API_KEY`
+(free tier — `gemini-flash-lite-latest`)**: mặc định `auto` → Gemini diễn đạt, lỗi
+hoặc rate limit → tự fallback template bám nguyên văn nguồn; key chỉ nằm trong
+Vercel Secret, không trong repo. Local chưa set key → luôn dùng template.
 
 **Kiểm thử (7 ca, chạy thật):**
 
@@ -132,7 +134,9 @@ của tài liệu hạn chế, validate `question`/`date` (trước đây 500), 
 1. **Không có HRIS/chấm công** → không trả lời được “còn bao nhiêu ngày phép” (T06) — chỉ trả định mức năm và nói rõ giới hạn.
 2. **Một chủ đề** (nghỉ phép) — metadata model đủ chung cho chủ đề khác nhưng chưa tích hợp.
 3. **Dữ liệu giả lập** — không xác nhận chính sách Appota hay bất kỳ thực tế nào.
-4. **LLM template** là mặc định khi chưa set `GEMINI_API_KEY`; Gemini free tier có rate limit.
+4. **Gemini free tier** — bản demo set key free tier (`gemini-flash-lite-latest`); rate limit
+   hoặc lỗi → fallback template ngay (không bao giờ chết demo); guard chặn rò rỉ chạy trên cả
+   văn bản AI. Chưa set key (local mặc định) → dùng template.
 5. **Adversarial có giới hạn** — đã chạy battery 24 ca oracle (`agentA_oracle.py`) và pin bảo mật (leak/adversarial/malformed) thật trên deploy, nhưng chưa red-team mở rộng (fuzz, đo rate limit, thử đa người dùng thật).
 6. **Prompt injection** được kiểm bằng guard + test mẫu (T05, X01–X04) chạy thật, chưa red-team bằng người.
 

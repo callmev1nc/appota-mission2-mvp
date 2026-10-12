@@ -1,6 +1,6 @@
 # Agent A — 24 ca ORACLE chạy trên engine MVP
 
-- Oracle: `E:\Work\APPOTA\support\validation_cases.json` (Mission 1, NOT_EXECUTED) · chạy 2026-10-12 23:44
+- Oracle: `E:\Work\APPOTA\support\validation_cases.json` (Mission 1, NOT_EXECUTED) · chạy 2026-10-13 00:07
 - Kết quả: **16 PASS · 8 PASS+ (trích thêm nguồn hợp lệ) · 0 FAIL**
 
 | Ca | Oracle status | Engine status | Kết luận | Ghi chú |

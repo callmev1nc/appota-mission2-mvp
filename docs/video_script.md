@@ -49,5 +49,5 @@
 
 ## 4:50–5:00 · Hạn chế (10s)
 
-- “Chưa có SSO/HRIS, một chủ đề, dữ liệu giả lập, LLM template là mặc định khi chưa có key.
-  Repo public, không chứa key nào.”
+- “Chưa có SSO/HRIS, một chủ đề, dữ liệu giả lập. Demo dùng Gemini free tier, rate limit
+  là fallback template. Repo public, không chứa key nào — key chỉ ở Vercel Secret.”

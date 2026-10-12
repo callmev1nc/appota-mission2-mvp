@@ -112,20 +112,42 @@ def main() -> int:
           j.get("status") == "ANSWER_WITH_DATA_LIMIT" and j.get("escalate_to") == "HR An (giả lập)" and "request_form" in j.get("missing_keys", []),
           f"{j.get('status')} escalate={j.get('escalate_to')}")
 
-    # 7 · llm modes — thiết kế: auto → fallback template giữ ANSWER;
-    #                  gemini tường minh khi không có key → SOURCE_ONLY trung thực (không giả vờ AI)
-    code, j, ms = req("/api/ask", {"profile_id": "U01", "question": Q, "llm": "gemini"})
-    llm = j.get("answer", {}).get("llm", {})
-    check("LLM", "mode gemini không key → SOURCE_ONLY + error=no_api_key",
-          j.get("status") == "SOURCE_ONLY" and not llm.get("used")
-          and llm.get("error") == "no_api_key",
-          f"status={j.get('status')} err={llm.get('error')}")
+    # 7 · llm modes — hai nhánh theo môi trường:
+    #   CÓ key (demo production): Gemini diễn đạt thật; content guard chạy trên văn bản AI
+    #   KHÔNG key / rate-limit free tier: auto → template fallback giữ ANSWER;
+    #                                     gemini tường minh → SOURCE_ONLY trung thực (không giả vờ AI)
     code, j, ms = req("/api/ask", {"profile_id": "U01", "question": Q, "llm": "auto"})
     llm = j.get("answer", {}).get("llm", {})
-    check("LLM", "mode auto không key → template fallback, giữ ANSWER",
-          j.get("status") == "ANSWER" and not llm.get("used")
-          and "fallback" in str(llm.get("status")),
-          f"status={j.get('status')} llm={llm.get('status')}")
+    has_key = bool(llm.get("used")) and llm.get("error") != "no_api_key"
+    if has_key:
+        check("LLM", "auto + key → Gemini thật (used, ok), ANSWER, đủ 6 citations",
+              j.get("status") == "ANSWER" and llm.get("used")
+              and llm.get("status") == "ok" and len(j.get("citations", [])) == 6,
+              f"status={j.get('status')} llm={llm.get('status')} cites={len(j.get('citations', []))}")
+        code, j, ms = req("/api/ask", {"profile_id": "U01", "question": Q, "llm": "gemini"})
+        llm = j.get("answer", {}).get("llm", {})
+        err = str(llm.get("error") or "")
+        transient = (not llm.get("used")) and (
+            err in ("http_429", "http_503", "URLError", "TimeoutError")
+            or err.endswith("Error"))
+        check("LLM", "gemini tường minh + key → used=True (hoặc rate-limit free tier → degrade trung thực)",
+              (j.get("status") == "ANSWER" and llm.get("used") and llm.get("status") == "ok")
+              or (transient and j.get("status") == "SOURCE_ONLY"),
+              f"status={j.get('status')} llm={llm.get('status')} err={llm.get('error')}")
+        ai_cites = set(re.findall(r"D\d{2}#s\d+", j["answer"]["text"]))
+        allowed = {c["section_id"] for c in j["citations"]}
+        check("LLM", "văn bản AI chỉ trích citation thuộc tập nguồn (content guard)",
+              ai_cites <= allowed, f"ngoài tập: {sorted(ai_cites - allowed)}")
+    else:
+        check("LLM", "mode auto không key → template fallback, giữ ANSWER",
+              j.get("status") == "ANSWER" and not llm.get("used")
+              and "fallback" in str(llm.get("status")),
+              f"status={j.get('status')} llm={llm.get('status')}")
+        code, j, ms = req("/api/ask", {"profile_id": "U01", "question": Q, "llm": "gemini"})
+        llm = j.get("answer", {}).get("llm", {})
+        check("LLM", "mode gemini không dùng được → SOURCE_ONLY trung thực (không giả vờ AI)",
+              j.get("status") == "SOURCE_ONLY" and not llm.get("used"),
+              f"status={j.get('status')} err={llm.get('error')}")
     code, j, ms = req("/api/ask", {"profile_id": "U02", "question": Q, "llm": "gemini", "simulate": ["llm_failure"]})
     check("LLM", "simulate llm_failure → SOURCE_ONLY", j.get("status") == "SOURCE_ONLY", str(j.get("status")))
 

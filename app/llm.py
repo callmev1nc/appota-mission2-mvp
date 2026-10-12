@@ -17,7 +17,7 @@ from .render import FORBIDDEN_ALWAYS, guard_output, render_template
 GEMINI_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 )
-DEFAULT_MODEL = "gemini-2.5-flash"
+DEFAULT_MODEL = "gemini-flash-lite-latest"  # free tier, rẻ nhất trong nhóm flash
 TIMEOUT_S = 12
 
 CITE_RE = re.compile(r"D\d{2}#s\d+")
