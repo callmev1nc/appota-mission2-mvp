@@ -1,5 +1,5 @@
 # Agent D — Mission 3: kiểm chứng trích dẫn + timeline + khung CR
-- 2026-10-20 21:02 · offline (import engine trực tiếp)
+- 2026-10-20 21:10 · live https://mission2mvp.vercel.app
 
 | Nhóm | Check | Kết luận |
 |---|---|---|
@@ -15,3 +15,8 @@
 | T12-CR | CR thêm D90/U90 → ask() trả 21 [D90#s1] KHÔNG sửa lõi engine | PASS {"annual_entitlement_days": 21, "notice_working_days": 3, "request_route": "direct_manager", "eligible": true} |
 | T12-CR | engine không biến dịch bộ dữ liệu thật sau khi ask(overlay) | PASS  |
 | T12-CR | U01 (khách) vẫn 14 — phạm vi D90 không lan truyền | PASS {"annual_entitlement_days": 14, "notice_working_days": 3, "request_route": "direct_manager", "request_form": "KT-01", "handover_form": "NF-01", "eligible": true} |
+| T10-live | GET /api/source U01 D03#s1 → 200 nguyên văn | PASS 200 {"accessible": true, "section": {"id": "D03#s1", "policy_key": "annual_entitleme |
+| T10-live | GET /api/source U01 D09#s1 → 404 + rỗng metadata bị chặn | PASS 404 {"error": "section_not_available"} |
+| T10-live | mã sai ≡ bị chặn (cùng 404 cùng body) | PASS 404 {"error": "section_not_available"} |
+| TIMELINE-live | GET /api/timeline U05 → D11 có, D06/D07 không | PASS 200 ['D01', 'D02', 'D03', 'D04', 'D10', 'D11', 'D12'] |
+| TIMELINE-live | GET /api/timeline U03 → D05 có, D11 không | PASS 200 ['D01', 'D05', 'D06'] |

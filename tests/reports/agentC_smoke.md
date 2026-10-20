@@ -1,9 +1,9 @@
 # Agent C — Smoke: static, contract, phiên bản, llm, hiệu năng
-- 2026-10-20 20:50 · live http://127.0.0.1:8877
+- 2026-10-20 21:14 · live https://mission2mvp.vercel.app
 
 | Nhóm | Check | Kết luận |
 |---|---|---|
-| Static | node --check app.js | PASS Debugger listening on ws://127.0.0.1:56289/0ebf5f95-7274-4b20-b037-e66642d2ee30
+| Static | node --check app.js | PASS Debugger listening on ws://127.0.0.1:58132/a9b59d4b-cf08-4521-8f86-1cfe59ba50ff
  |
 | Static | GET / contains 'MISSION 3' | PASS HTTP 200 |
 | Static | GET / contains 'id="profiles"' | PASS HTTP 200 |
@@ -33,25 +33,27 @@
 | Chuyên biệt | A06 cụm thủ tục: KT-01 + NF-01 + direct_manager | PASS {'request_route': 'direct_manager', 'request_form': 'KT-01', 'handover_form': 'N |
 | Chuyên biệt | A07 data-limit + escalate HR An | PASS ANSWER_WITH_DATA_LIMIT escalate=HR An (giả lập) |
 | LLM | mode auto không key → template fallback, giữ ANSWER | PASS status=ANSWER llm=unavailable_fallback_template |
-| LLM | mode gemini không dùng được → SOURCE_ONLY trung thực (không giả vờ AI) | PASS status=SOURCE_ONLY err=no_api_key |
+| LLM | mode gemini không dùng được → SOURCE_ONLY trung thực (không giả vờ AI) | PASS status=SOURCE_ONLY err=TimeoutError |
 | LLM | simulate llm_failure → SOURCE_ONLY | PASS SOURCE_ONLY |
-| Hiệu năng | 5 request song song đều 200 + ANSWER | PASS 24ms wall |
+| Hiệu năng | 5 request song song đều 200 + ANSWER | PASS 483ms wall |
 | Frontend | toàn bộ ${...} đều qua esc()/withCites()/builder đã kiểm chứng (anti-XSS) | PASS clean |
-| Hiệu năng | latency trung bình 14ms · worst 178ms (/) | PASS  |
+| Hiệu năng | latency trung bình 304ms · worst 453ms (/api/profiles) — đo khi nóng | PASS  |
 
 ## Latency
 
 | Endpoint | ms |
 |---|---|
-| / | 178 |
-| / | 27 |
-| / | 19 |
-| /api/ask U03 | 16 |
-| /api/ask U02 | 13 |
-| ask 2026-11-01 | 12 |
-| /api/ask U05 | 4 |
-| /app.js | 4 |
-| /api/ask U04 | 3 |
-| /app.js | 3 |
+| /api/profiles | 453 |
+| /api/ask U05 | 439 |
+| ask 2026-11-01 | 426 |
+| ask 2026-10-31 | 425 |
+| /api/ask U04 | 417 |
+| /api/health | 412 |
+| /api/ask U03 | 407 |
+| /api/ask U02 | 404 |
+| /api/ask U01 | 402 |
+| ask 2026-08-31 | 401 |
+
+Lạnh (warm-up, không tính vào check): /=357ms, /app.js=180ms, /styles.css=186ms, /api/health=392ms
 
 **Tổng: 34/34 PASS**

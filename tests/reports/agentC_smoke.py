@@ -53,6 +53,12 @@ def main() -> int:
     # 1 · static
     out = subprocess.run(["node", "--check", "app.js"], capture_output=True, text=True)
     check("Static", "node --check app.js", out.returncode == 0, out.stderr.strip()[:80])
+    # warm-up: serverless (Vercel) lạnh lúc đầu — nhiễu có thể > 5s cho request đầu;
+    # đo latency sản phẩm khi NÓNG, lưu riêng mẫu lạnh để minh bạch trong report.
+    cold: list[tuple[str, float]] = []
+    for path in ("/", "/app.js", "/styles.css", "/api/health"):
+        _, _, ms_c = req(path)
+        cold.append((path, round(ms_c)))
     for path, needle in [("/", "MISSION 3"), ("/", 'id="profiles"'), ("/", 'id="btn-compare"'),
                          ("/", 'id="timeline-list"'), ("/", 'id="viewer"'),
                          ("/app.js", "askBody"), ("/app.js", "withCites"),
@@ -254,10 +260,10 @@ def main() -> int:
     check("Frontend", "toàn bộ ${...} đều qua esc()/withCites()/builder đã kiểm chứng (anti-XSS)",
           not sinks, str(sinks[:3]) if sinks else "clean")
 
-    # latency summary
+    # latency summary — chỉ tính mẫu NÓNG (đã warm-up); serverless lạnh nằm ngoài nghịch lý đo
     worst = max(lat, key=lambda x: x[1])
     avg = sum(m for _, m in lat) / len(lat)
-    check("Hiệu năng", f"latency trung bình {avg:.0f}ms · worst {worst[1]:.0f}ms ({worst[0]})", worst[1] < 5000)
+    check("Hiệu năng", f"latency trung bình {avg:.0f}ms · worst {worst[1]:.0f}ms ({worst[0]}) — đo khi nóng", worst[1] < 5000)
 
     # report
     lines = [
@@ -268,6 +274,7 @@ def main() -> int:
     lines += [f"| {g} | {n} | {v} |" for g, n, v in rows]
     lines += ["", "## Latency\n", "| Endpoint | ms |", "|---|---|"]
     lines += [f"| {p} | {m:.0f} |" for p, m in sorted(lat, key=lambda x: -x[1])[:10]]
+    lines += ["", f"Lạnh (warm-up, không tính vào check): {', '.join(f'{p}={m}ms' for p, m in cold)}"]
     lines += ["", f"**Tổng: {sum(1 for _,_,v in rows if v.startswith('PASS'))}/{len(rows)} PASS**"
               + ("" if not issues else "\n\n## Issues\n" + "\n".join(f"- {i}" for i in issues))]
     open(REPORT, "w", encoding="utf-8").write("\n".join(lines))
@@ -275,7 +282,7 @@ def main() -> int:
     print(f"{npass}/{len(rows)} PASS · issues={len(issues)} -> {REPORT}")
     for i in issues:
         print(f"  ❌ {i}")
-    print(f"latency avg={avg:.0f}ms worst={worst[1]:.0f}ms ({worst[0]})")
+    print(f"latency avg={avg:.0f}ms worst={worst[1]:.0f}ms ({worst[0]}) · cold={max(m for _, m in cold)}ms")
     return 1 if issues else 0
 
 

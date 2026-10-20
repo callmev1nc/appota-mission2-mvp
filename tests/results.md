@@ -1,8 +1,9 @@
-# Bộ kiểm thử Mission 2 — KẾT QUẢ CHẠY THẬT
+# Bộ kiểm thử Mission 2 + 3 — KẾT QUẢ CHẠY THẬT (live trên production)
 
-- Thời điểm chạy: 2026-10-20 21:02 (giây địa phương) · chế độ: `offline (import engine trực tiếp)`
+- Thời điểm chạy: 2026-10-20 21:10 (giây địa phương) · chế độ: `live: https://mission2mvp.vercel.app`
 - Dữ liệu: `mission1-leave-synthetic-v2` · toàn bộ tổ chức/tài liệu là giả lập
 - Tổng kết: **9 ĐẠT** · **1 CHƯA ĐẠT theo thiết kế** · **0 lỗi kiểm thử** (10 ca)
+- T01–T07 là regression giữ nguyên kỳ vọng Mission 2; T08/T09/T11 là ca mới Mission 3; T10/T12-CR xem `tests/reports/agentD_m3.md`.
 
 | Ca | Trạng thái | Kết luận |
 |---|---|---|

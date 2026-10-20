@@ -27,3 +27,6 @@ Thumbs.db
 
 # Node (nếu có tooling)
 node_modules/
+
+.vercel
+.env*
