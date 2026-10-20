@@ -1,8 +1,8 @@
 # Bộ kiểm thử Mission 2 — KẾT QUẢ CHẠY THẬT
 
-- Thời điểm chạy: 2026-10-13 00:07 (giây địa phương) · chế độ: `live: https://mission2mvp.vercel.app`
-- Dữ liệu: `mission1-leave-synthetic-v1` · toàn bộ tổ chức/tài liệu là giả lập
-- Tổng kết: **6 ĐẠT** · **1 CHƯA ĐẠT theo thiết kế** · **0 lỗi kiểm thử** (7 ca)
+- Thời điểm chạy: 2026-10-20 21:02 (giây địa phương) · chế độ: `offline (import engine trực tiếp)`
+- Dữ liệu: `mission1-leave-synthetic-v2` · toàn bộ tổ chức/tài liệu là giả lập
+- Tổng kết: **9 ĐẠT** · **1 CHƯA ĐẠT theo thiết kế** · **0 lỗi kiểm thử** (10 ca)
 
 | Ca | Trạng thái | Kết luận |
 |---|---|---|
@@ -13,6 +13,9 @@
 | T05-X04 | ANSWER | ĐẠT |
 | T06-BALANCE | ANSWER | CHƯA ĐẠT — trả lời ngoài phạm vi dữ liệu hiện có |
 | T07-C04 | SOURCE_ONLY | ĐẠT |
+| T08-CHAIN3 | ANSWER | ĐẠT |
+| T09-EDGE-CONFLICT | CONFLICT | ĐẠT |
+| T11-BOUND-11-11 | ANSWER | ĐẠT |
 
 ---
 
@@ -45,6 +48,7 @@ Chỉ dùng dữ liệu giả lập; không phải chính sách Appota thật.
 > CHƯA KẾT LUẬN — các nguồn còn hiệu lực đang mâu thuẫn:
 • 16 ngày/năm — [D05#s1] Định mức Công ty Bình — nguồn thứ nhất
 • 18 ngày/năm — [D06#s1] Định mức Công ty Bình — nguồn thứ hai có xung đột
+→ Các nguồn D05#s1, D06#s1 đang CÙNG trong thời hạn hiệu lực tại ngày xét 2026-10-07 và chưa khai báo quan hệ replaces/approved_overrides giữa các bản — không nguồn nào có căn cứ gỡ nguồn khác. Cần chủ sở hữu/HR có thẩm quyền ban hành quan hệ quản lý nội dung (thay thế hoặc điều chỉnh có phê duyệt) giữa các bản này.
 Không chọn theo ngày cập nhật, cấp đơn vị hay trung bình số.
 HR phụ trách: HR Bình (giả lập).
 Gõ riêng một điều khoản không xung đột (vd: thời gian báo trước) để nhận câu trả lời phần đó.
@@ -130,3 +134,55 @@ Chỉ dùng dữ liệu giả lập; không phải chính sách Appota thật.
 **Đạt/Chưa đạt:** ĐẠT
 
 **Điều học được:** Bước chọn bằng chứng độc lập với LLM — lỗi diễn đạt chỉ được làm rỗng phần diễn đạt, không được làm đổi kết luận.
+
+### T08-CHAIN3 — M3 — nhiều cấp tổ chức: Tập đoàn → Công ty → Phòng phân giải có khai báo
+
+**Kỳ vọng:** Chuỗi 3 tầng phân giải đúng quan hệ khai báo: D01 (Tập đoàn 12) → D03 (Công ty An 14) bị ghi đề riêng trong Phòng Kinh doanh → D11 (13) [D11#s1]; điều khoản khác của D01 vẫn nguyên văn [D01#s3, D01#s4]; trace ghi rõ quan hệ khai báo, không chọn vì «mới hơn».
+
+**Thực tế:** trạng thái `ANSWER` · facts `{"annual_entitlement_days": 13, "notice_working_days": 3, "request_route": "direct_manager", "eligible": true}` · nguồn `D11#s1, D01#s3, D01#s4, D01#s1`
+
+> Kết luận theo hồ sơ của bạn (Tập đoàn Mô Phỏng → Công ty An → Kinh doanh → B2B) · xét ngày 2026-10-07:
+• Số ngày phép: 13 ngày/năm [D11#s1]
+• Báo trước: 3 ngày làm việc [D01#s3]
+• Gửi cho: quản lý trực tiếp [D01#s4]
+• Điều kiện: đủ điều kiện theo hồ sơ [D01#s1]
+Nguồn: D01#s1, D01#s3, D01#s4, D11#s1
+Chỉ dùng dữ liệu giả lập; không phải chính sách Appota thật.
+
+**Đạt/Chưa đạt:** ĐẠT
+
+**Điều học được:** Cấp tổ chức sâu hơn chỉ thắng khi đã khai báo quan hệ overrides (đúng key, đúng phạm vi, có phê duyệt) — Mozart-M3 thêm chuỗi giải thích dữ kiện này cho người dùng kiểm chứng, không đổi lõi phân giải Mission 2.
+
+### T09-EDGE-CONFLICT — M3 — edge case: mâu thuẫn đa cấp KHÔNG khai báo quan hệ, hợp lệ sau ngày hiệu lực
+
+**Kỳ vọng:** Ngày 20/11: D12 (16 ngày, nhóm B2B) có hiệu lực nhưng chưa khai báo quan hệ với D11 (13) → CHƯA KẾT LUẬN với lý do rõ: cùng hiệu lực, chưa khai báo quan hệ quản lý nội dung; không chọn «cấp sâu hơn tự nhiên thắng»; escalate HR An.
+
+**Thực tế:** trạng thái `CONFLICT` · facts `{}` · nguồn `D11#s1, D12#s1`
+
+> CHƯA KẾT LUẬN — các nguồn còn hiệu lực đang mâu thuẫn:
+• 13 ngày/năm — [D11#s1] Định mức Phòng Kinh doanh An — bản hiện hành
+• 16 ngày/năm — [D12#s1] Định mức bổ sung nhóm B2B An — nguồn chưa khai báo quan hệ
+→ Các nguồn D11#s1, D12#s1 đang CÙNG trong thời hạn hiệu lực tại ngày xét 2026-11-20 và chưa khai báo quan hệ replaces/approved_overrides giữa các bản — không nguồn nào có căn cứ gỡ nguồn khác. Cần chủ sở hữu/HR có thẩm quyền ban hành quan hệ quản lý nội dung (thay thế hoặc điều chỉnh có phê duyệt) giữa các bản này.
+Không chọn theo ngày cập nhật, cấp đơn vị hay trung bình số.
+HR phụ trách: HR An (giả lập).
+Gõ riêng một điều khoản không xung đột (vd: thời gian báo trước) để nhận câu trả lời phần đó.
+
+**Đạt/Chưa đạt:** ĐẠT
+
+**Điều học được:** M3 mở xung đột từ cặp cùng-cấp (M2) sang cặp đa-cấp; nguyên tắc bất biến: thiếu quan hệ khai báo → không kết luận, kèm giải thích + hướng xử lý trong note.
+
+### T11-BOUND-11-11 — M3 — regression biên hiệu lực tại mốc mới: cùng câu hỏi đổi ngày → đổi bản đúng hệ
+
+**Kỳ vọng:** Mốc 01/11: D04 (15 ngày) bắt đầu hiệu lực thay D03 [D04#s1]; báo trước vẫn 3 ngày từ D01 [D01#s3]; D02 hết hạn không quay lại.
+
+**Thực tế:** trạng thái `ANSWER` · facts `{"annual_entitlement_days": 15, "notice_working_days": 3}` · nguồn `D04#s1, D01#s3`
+
+> Kết luận theo hồ sơ của bạn (Tập đoàn Mô Phỏng → Công ty An → Kế toán → Công nợ) · xét ngày 2026-11-01:
+• Số ngày phép: 15 ngày/năm [D04#s1]
+• Báo trước: 3 ngày làm việc [D01#s3]
+Nguồn: D01#s3, D04#s1
+Chỉ dùng dữ liệu giả lập; không phải chính sách Appota thật.
+
+**Đạt/Chưa đạt:** ĐẠT
+
+**Điều học được:** Biên hiệu lực hoạt động đúng ở mốc MỚI (01/11) — tiền đề của timeline phiên bản M3; cùng engine, dữ liệu v2 không phá ca Mission 2 (T04 là mốc 31/10, ca này là mốc ngay sau).

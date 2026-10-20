@@ -53,8 +53,11 @@ def main() -> int:
     # 1 · static
     out = subprocess.run(["node", "--check", "app.js"], capture_output=True, text=True)
     check("Static", "node --check app.js", out.returncode == 0, out.stderr.strip()[:80])
-    for path, needle in [("/", "MISSION 2"), ("/", 'id="profiles"'), ("/", 'id="btn-compare"'),
-                         ("/app.js", "askBody"), ("/app.js", "withCites"), ("/styles.css", "status-chip")]:
+    for path, needle in [("/", "MISSION 3"), ("/", 'id="profiles"'), ("/", 'id="btn-compare"'),
+                         ("/", 'id="timeline-list"'), ("/", 'id="viewer"'),
+                         ("/app.js", "askBody"), ("/app.js", "withCites"),
+                         ("/app.js", "openViewer"), ("/app.js", "loadTimeline"),
+                         ("/styles.css", "status-chip"), ("/styles.css", "st-current")]:
         code, body, ms = req(path)
         lat.append((path, ms))
         check("Static", f"GET {path} contains {needle!r}", code == 200 and needle in str(body), f"HTTP {code}")
@@ -64,7 +67,9 @@ def main() -> int:
     check("API", "health ok + evaluation_date", code == 200 and j.get("ok") and j.get("evaluation_date") == "2026-10-07", str(j)[:60])
     code, j, ms = req("/api/profiles"); lat.append(("/api/profiles", ms))
     profs = j.get("profiles", [])
-    check("API", "4 hồ sơ, U04 có hr", len(profs) == 4 and "hr" in next(p["read_roles"] for p in profs if p["id"] == "U04"))
+    check("API", "5 hồ sơ (M3 thêm U05 4-tầng), U05 có đường dẫn 4 tầng, U04 có hr",
+          len(profs) == 5 and "hr" in next(p["read_roles"] for p in profs if p["id"] == "U04")
+          and len(next(p["unit_path"] for p in profs if p["id"] == "U05")) == 4)
 
     # 3 · documents panel
     code, j, ms = req("/api/documents?profile_id=U01"); lat.append(("/api/documents U01", ms))
@@ -79,7 +84,8 @@ def main() -> int:
     exp4 = {"U01": ("ANSWER", 14, ["D07#s1", "D08#s1"]),
             "U02": ("ANSWER", 14, ["D01#s4"]),
             "U03": ("CONFLICT", None, ["D05#s1", "D06#s1"]),
-            "U04": ("ANSWER", 14, [])}
+            "U04": ("ANSWER", 14, []),
+            "U05": ("ANSWER", 13, ["D11#s1"])}
     for u, (est, edays, ecite) in exp4.items():
         code, j, ms = req("/api/ask", {"profile_id": u, "question": Q, "llm": "template"})
         lat.append((f"/api/ask {u}", ms))

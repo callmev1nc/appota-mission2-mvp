@@ -12,12 +12,13 @@ from fastapi.responses import FileResponse  # noqa: E402
 
 from app.engine import ask as engine_ask  # noqa: E402
 from app.engine import load_dataset  # noqa: E402
+from app.engine import source_view, timeline_view  # noqa: E402
 from app.llm import compose  # noqa: E402
 from app.render import STATUS_LABELS  # noqa: E402
 
 ROOT_DIR = pathlib.Path(__file__).resolve().parent.parent
 
-app = FastAPI(title="appota-leave-mvp", version="0.2.0")
+app = FastAPI(title="appota-leave-mvp", version="0.3.0")
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
 )
@@ -127,6 +128,56 @@ async def profiles():
 @app.get("/api/documents")
 async def documents(profile_id: str = ""):
     return _documents_payload(profile_id or None)
+
+
+def _valid_date_or_none(date: str | None) -> str | None:
+    """Trả về chuỗi ngày hợp lệ hoặc None; chuỗi sai → ValueError cho route xử lý."""
+    if date is None or date == "":
+        return None
+    import datetime as _dt
+
+    _dt.date.fromisoformat(date)  # ném ValueError nếu sai định dạng
+    return date
+
+
+@app.get("/api/timeline")
+async def timeline_endpoint(profile_id: str = "", date: str | None = None):
+    """M3: lịch sử phiên bản & hiệu lực theo góc một hồ sơ (chỉ tài liệu được đọc)."""
+    if not profile_id:
+        return {"error": "profile_required"}
+    try:
+        date = _valid_date_or_none(date)
+    except ValueError:
+        return {"error": "invalid_date"}
+    result = timeline_view(profile_id, date)
+    if result.get("error") == "profile_not_found":
+        from fastapi.responses import JSONResponse
+
+        return JSONResponse(status_code=404, content={"error": "profile_not_found"})
+    return result
+
+
+@app.get("/api/source")
+async def source_endpoint(profile_id: str = "", section_id: str = "", date: str | None = None):
+    """M3: kiểm chứng trích dẫn — nguyên văn đoạn + phiên bản tài liệu trong quyền đọc.
+
+    Bất khả xác nhận: không tồn tại / sai mã / ngoài quyền đọc / hồ sơ lạ —
+    tất cả cùng một phản hồi 404 {"error": "section_not_available"}: client và
+    người dùng không thể suy ra sự tồn tại của tài liệu ngoài quyền.
+    """
+    from fastapi.responses import JSONResponse
+
+    not_available = JSONResponse(status_code=404, content={"error": "section_not_available"})
+    if not profile_id or not section_id:
+        return not_available
+    try:
+        date = _valid_date_or_none(date)
+    except ValueError:
+        return not_available
+    result = source_view(profile_id, section_id, date)
+    if not result.get("accessible"):
+        return not_available
+    return result
 
 
 @app.post("/api/ask")

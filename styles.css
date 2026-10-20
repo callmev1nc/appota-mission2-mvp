@@ -183,3 +183,51 @@ table.docs th, table.docs td { text-align: left; padding: 6px 7px; border-bottom
 .footer code { background: #1d2939; color: #c6cde0; }
 .footer a { color: #9db4ff; }
 .hidden { display: none !important; }
+
+/* =================== M3 · chip bấm được, viewer, timeline, chuỗi giải thích =================== */
+button.cite {
+  background: #e8edfb; color: #2f43a8; border: 1px solid #d5dcf5; border-radius: 5px;
+  padding: 1px 6px; font: inherit; font-size: 12.5px; font-weight: 700; white-space: nowrap;
+  cursor: pointer; vertical-align: baseline;
+}
+button.cite:hover { background: #dde5fa; border-color: var(--accent); color: #1e2f7d; }
+
+.conflict-meta { color: var(--muted); font-size: 12px; margin-left: 8px; }
+.conflict-note {
+  background: var(--info-bg); color: #4a1d7a; border: 1px dashed #d8b4fe;
+  border-radius: 8px; padding: 8px 10px; font-size: 13px; margin-top: 4px;
+}
+
+ul.chain { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 10px; font-size: 13.5px; }
+ul.chain .chain-key { font-weight: 700; color: var(--accent); }
+ul.chain ul { margin: 3px 0 0; padding-left: 16px; display: grid; gap: 4px; color: #3d4763; }
+
+.st { display: inline-block; font-size: 11.5px; border-radius: 999px; padding: 2px 9px; font-weight: 700; white-space: nowrap; }
+.st-current { background: var(--ok-bg); color: var(--ok); }
+.st-expired { background: var(--bad-bg); color: var(--bad); }
+.st-future { background: var(--info-bg); color: var(--info); }
+.st-no_date { background: var(--chip); color: var(--muted); }
+.st-draft { background: var(--warn-bg); color: var(--warn); margin-left: 6px; font-size: 10.5px; padding: 1px 7px; }
+
+.viewer {
+  border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px;
+  max-width: 720px; width: min(94vw, 720px); box-shadow: 0 20px 60px rgba(16,24,40,.28);
+  color: var(--ink);
+}
+.viewer::backdrop { background: rgba(16,24,40,.5); }
+.viewer .btn { width: auto; margin: 0; padding: 6px 12px; }
+.viewer-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; }
+.viewer-head h3 { margin: 0; font-size: 15px; }
+.viewer-body { font-size: 14px; }
+#viewer-body .alert { margin-top: 8px; }
+.vmeta { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+.vmeta td { border-bottom: 1px solid var(--line); padding: 6px 8px; vertical-align: top; }
+.vmeta td:first-child {
+  color: var(--muted); width: 128px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .03em;
+}
+.vtext {
+  background: #fbfcff; border: 1px solid var(--line); border-left: 3px solid var(--accent);
+  border-radius: 8px; padding: 12px 14px; margin: 10px 0; font-size: 14.5px; line-height: 1.65;
+  white-space: pre-wrap;
+}
+.vmeta .hint { display: block; margin-top: 8px; }

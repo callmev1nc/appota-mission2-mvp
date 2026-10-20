@@ -37,8 +37,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: "Policy tests — offline (7 ca: 6 ĐẠT / 1 CHƯA ĐẠT theo thiết kế / 0 FAIL)"
+      - name: "Policy tests — offline (10 ca: 9 ĐẠT / 1 ĐẠT-heuristic / 0 FAIL)"
         run: python -X utf8 tests/run_tests.py
+
+      - name: "Agent D — M3: viewer kiểm chứng + timeline + khung CR (offline)"
+        run: python -X utf8 tests/reports/agentD_m3.py
 
       - name: Guard results.md không đổi trạng thái so với bản cam kết
         run: git diff --exit-code --stat -- tests/cases.json data/synthetic_dataset.json
@@ -89,13 +92,16 @@ jobs:
         run: |
           BASE=https://mission2mvp.vercel.app
           curl -fsS "$BASE/api/health" | grep -q '"ok":true'
-          curl -fsS "$BASE/" | grep -q "MISSION 2"
-          curl -fsS "$BASE/app.js" | grep -q "askBody"
-          curl -fsS "$BASE/styles.css" | grep -q "status-chip"
+          curl -fsS "$BASE/" | grep -q "MISSION 3"
+          curl -fsS "$BASE/app.js" | grep -q "openViewer"
+          curl -fsS "$BASE/styles.css" | grep -q "st-current"
           echo "endpoints OK"
 
-      - name: 7 ca kiểm thử trên bản deploy (cùng bộ với repo)
+      - name: 10 ca kiểm thử trên bản deploy (cùng bộ với repo)
         run: python -X utf8 tests/run_tests.py --live https://mission2mvp.vercel.app
+
+      - name: Agent D — M3 trên bản deploy (source 404 bất khả xác nhận + timeline phạm vi)
+        run: python -X utf8 tests/reports/agentD_m3.py --live https://mission2mvp.vercel.app
 
       - name: Không rò rỉ dữ liệu hạn chế — quét response trực tiếp
         run: |
