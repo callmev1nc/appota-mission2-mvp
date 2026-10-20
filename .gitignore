@@ -30,3 +30,7 @@ node_modules/
 
 .vercel
 .env*
+
+# Artifact sinh cục bộ bởi vercel build (dùng requirements.txt làm nguồn duy nhất)
+pyproject.toml
+uv.lock
