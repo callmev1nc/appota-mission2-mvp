@@ -15,6 +15,15 @@ from typing import Any
 DATA_PATH = Path(__file__).resolve().parent.parent / "data" / "synthetic_dataset.json"
 
 TOPIC = "annual_leave"
+LEVEL_VN = {"group": "Tập đoàn", "company": "Công ty", "department": "Phòng", "team": "Nhóm"}
+KEY_VN = {
+    "annual_entitlement_days": "định mức nghỉ phép năm",
+    "notice_working_days": "thời gian báo trước",
+    "request_route": "nơi gửi đề nghị",
+    "request_form": "biểu mẫu",
+    "handover_form": "bàn giao",
+    "eligibility": "điều kiện",
+}
 ALL_BENEFIT_KEYS = [
     "annual_entitlement_days",
     "notice_working_days",
@@ -297,8 +306,11 @@ def ask(
     profile_id: str,
     question: str,
     date_str: str | None = None,
+    dataset: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    dataset = load_dataset()
+    """dataset=None dùng bộ dữ liệu chuẩn; truyền dataset riêng chỉ dùng cho khung test CR
+    (tiêm dữ liệu thay đổi do Change Request mà KHÔNG sửa lõi engine)."""
+    dataset = dataset or load_dataset()
     date = _parse_date(date_str or dataset["evaluation_date"])
     depth = _org_depth(dataset)
 
@@ -378,6 +390,7 @@ def ask(
         entry = {
             "id": doc["id"],
             "title": doc["title"],
+            "version": doc.get("version"),
             "unit_id": doc["applicability"]["unit_id"],
             "unit_name": orgs[doc["applicability"]["unit_id"]]["name"],
             "effective": [doc.get("effective_from"), doc.get("effective_to")],
@@ -445,10 +458,66 @@ def ask(
         for r in resolutions
     ]
 
+    # 4b) chuỗi giải thích "vì sao" cho từng điều khoản: bản nào bị gỡ bởi quan hệ
+    # khai báo nào, bản nào còn đứng, kết luận dựa trên quan hệ chứ không phải "mới hơn".
+    chains: list[dict[str, Any]] = []
+    for r in resolutions:
+        key = r["policy_key"]
+        if r["decision"] in ("no_data", "reference_only"):
+            continue
+        lines: list[str] = []
+        for did in sorted(trace_docs):
+            for reason in trace_docs[did]["reasons"]:
+                rel_type, target = None, None
+                if " overridden_by:" in reason:
+                    rel_type, target = "approved_overrides", reason.split(" overridden_by:", 1)[1]
+                elif " superseded_by:" in reason:
+                    rel_type, target = "replaces", reason.split(" superseded_by:", 1)[1]
+                else:
+                    continue
+                sid = reason[len("section "):].split(" ", 1)[0]
+                e = trace_docs.get(sid.split("#")[0], {})
+                lines.append(
+                    f"{sid} • bỏ khỏi bằng chứng cho điều khoản «{KEY_VN.get(key, key)}» • "
+                    f"quan hệ {rel_type} khai báo trong {target} (đúng điều khoản, đúng phạm vi, có phê duyệt)."
+                )
+        for sec in r["sections"]:
+            e = trace_docs.get(sec["id"].split("#")[0], {})
+            lines.append(
+                f"{sec['id']} • {e.get('title', '?')} — {e.get('unit_name', '?')} (v{e.get('version', '?')}) "
+                f"còn đứng tại ngày xét • giá trị {json.dumps(sec['value'], ensure_ascii=False)}."
+            )
+        if r["decision"] == "conflict":
+            lines.append(
+                "CHƯA KẾT LUẬN: trên là các nguồn cùng hiệu lực nhưng khác giá trị, và CHƯA khai báo "
+                "quan hệ replaces/approved_overrides giữa chúng — không nguồn nào có căn cứ gỡ nguồn nào. "
+                "Hệ thống không tự chọn theo «mới hơn» hay theo cấp đơn vị."
+            )
+        elif r["decision"] == "override_wins":
+            sid = r["sections"][0]["id"]
+            lines.append(
+                f"KẾT LUẬN {sid} = {json.dumps(r['value'], ensure_ascii=False)} — thắng theo quan hệ "
+                "khai báo (approved_overrides/replaces), không phải vì «mới hơn»."
+            )
+        elif r["decision"] == "dedup_equal":
+            lines.append("Nhóm nguồn cùng giá trị, không mâu thuẫn — hợp nhất làm một bằng chứng cùng ý.")
+        chains.append({"policy_key": key, "decision": r["decision"], "lines": lines})
+    result["trace"]["chains"] = chains
+
     conflicts = [r for r in resolutions if r["decision"] == "conflict"]
     answered = [r for r in resolutions if r["decision"] in ("single", "dedup_equal", "override_wins")]
     reference = [r for r in resolutions if r["decision"] == "reference_only"]
     no_data = [r for r in resolutions if r["decision"] == "no_data"]
+
+    if conflicts:
+        for c in conflicts:
+            sids = sorted({s["id"] for g in c["groups"] for s in g["sections"]})
+            c["note"] = (
+                f"Các nguồn {', '.join(sids)} đang CÙNG trong thời hạn hiệu lực tại ngày xét "
+                f"{date.isoformat()} và chưa khai báo quan hệ replaces/approved_overrides giữa các bản — "
+                "không nguồn nào có căn cứ gỡ nguồn khác. Cần chủ sở hữu/HR có thẩm quyền ban hành "
+                "quan hệ quản lý nội dung (thay thế hoặc điều chỉnh có phê duyệt) giữa các bản này."
+            )
 
     # 5) trạng thái tổng
     if conflicts and any(r["policy_key"] not in INTERNAL_KEYS for r in conflicts):
@@ -459,19 +528,23 @@ def ask(
             for g in c["groups"]:
                 for sec in g["sections"]:
                     doc_id = sec["id"].split("#")[0]
+                    doc_row = next(d for d in dataset["documents"] if d["id"] == doc_id)
+                    unit_id = doc_row["applicability"]["unit_id"]
                     vals.append(
                         {
                             "value": g["value"],
                             "section_id": sec["id"],
                             "doc_id": doc_id,
                             "title": trace_docs[doc_id]["title"],
-                            "owner": next(
-                                d["owner"] for d in dataset["documents"] if d["id"] == doc_id
-                            ),
+                            "version": doc_row.get("version"),
+                            "unit_name": trace_docs[doc_id]["unit_name"],
+                            "unit_level": orgs[unit_id]["level"],
+                            "effective": [doc_row.get("effective_from"), doc_row.get("effective_to")],
+                            "owner": doc_row["owner"],
                         }
                     )
                     owners.append(vals[-1]["owner"])
-            result["conflicts"].append({"policy_key": c["policy_key"], "values": vals})
+            result["conflicts"].append({"policy_key": c["policy_key"], "values": vals, "note": c.get("note")})
         result["unresolved_policy_keys"] = [c["policy_key"] for c in conflicts]
         # trích dẫn của CONFLICT chỉ gồm các nguồn bất đồng
         conflict_sec_ids = {
@@ -485,7 +558,7 @@ def ask(
         ]
         # escalate: HR của đơn vị sâu nhất trong nhóm nguồn bất đồng
         result["escalate_to"] = _deepest_owner(
-            [v["doc_id"] for c in result["conflicts"] for v in c["values"]], trace_docs, depth
+            [v["doc_id"] for c in result["conflicts"] for v in c["values"]], trace_docs, depth, dataset
         )
         return result
 
@@ -518,7 +591,7 @@ def ask(
         if cls["explicit"] and explicit_missing:
             # escalate: HR của đơn vị sâu nhất trong các tài liệu ĐƯỢC CHỌN cho hồ sơ này
             included_ids = [d["id"] for d in trace_docs.values() if d["decision"] == "included"]
-            result["escalate_to"] = _deepest_owner(included_ids, trace_docs, depth)
+            result["escalate_to"] = _deepest_owner(included_ids, trace_docs, depth, dataset)
         if cls["balance_intent"]:
             result["caveats"].append(
                 "Hệ thống chưa có số dư cá nhân: đây là ĐỊNH MỨC năm theo chính sách, "
@@ -564,8 +637,9 @@ def _cite(sec: dict[str, Any], dataset: dict[str, Any], trace_docs: dict[str, An
     }
 
 
-def _deepest_owner(doc_ids: list[str], trace_docs: dict[str, Any], depth: dict[str, int]) -> str | None:
-    dataset = load_dataset()
+def _deepest_owner(
+    doc_ids: list[str], trace_docs: dict[str, Any], depth: dict[str, int], dataset: dict[str, Any]
+) -> str | None:
     best, best_d = None, -1
     for did in sorted(set(doc_ids)):
         unit = trace_docs.get(did, {}).get("unit_id")
@@ -576,3 +650,143 @@ def _deepest_owner(doc_ids: list[str], trace_docs: dict[str, Any], depth: dict[s
             best_d = d
             best = next(doc["owner"] for doc in dataset["documents"] if doc["id"] == did)
     return best
+
+# --------------------------------------------------------------------------
+# M3 · kiểm chứng cho người dùng: timeline phiên bản + nguyên văn trích dẫn
+# --------------------------------------------------------------------------
+
+SECTION_ID_RE = re.compile(r"^D\d{1,3}#s\d+$")
+
+
+def timeline_view(
+    profile_id: str,
+    date_str: str | None = None,
+    dataset: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Lịch sử phiên bản & hiệu lực của chủ đề theo góc MỘT hồ sơ.
+
+    Chỉ liệt kê tài liệu hồ sơ này (a) ĐƯỢC ĐỌC và (b) nằm trong phạm vi áp dụng
+    của đơn vị hồ sơ; tài liệu bị chặn quyền đọc chỉ được đếm số — không xác nhận
+    sự tồn tại. Trạng thái tính theo ngày xét, không theo ngày hệ thống.
+    """
+    dataset = dataset or load_dataset()
+    date = _parse_date(date_str or dataset["evaluation_date"])
+    profile = next((p for p in dataset["profiles"] if p["id"] == profile_id), None)
+    if profile is None:
+        return {"error": "profile_not_found"}
+    unit_path = profile.get("unit_path") or []
+    roles = set(profile.get("read_roles", []))
+    rows: list[dict[str, Any]] = []
+    restricted_count = out_of_scope_count = 0
+    for doc in dataset["documents"]:
+        if doc["topic"] != TOPIC:
+            continue
+        if not roles & set(doc.get("read_roles", [])):
+            restricted_count += 1  # tài liệu không được đọc: không ghi id/title
+            continue
+        if unit_path and not _scope_ok(doc, unit_path):
+            out_of_scope_count += 1  # đọc được nhưng áp dụng đơn vị khác
+            continue
+        status = {
+            "ok": "current",
+            "expired": "expired",
+            "not_yet_effective": "future",
+            "no_date": "no_date",
+        }[_doc_effective(doc, date)]
+        org = next(o for o in dataset["organizations"] if o["id"] == doc["applicability"]["unit_id"])
+        rows.append(
+            {
+                "id": doc["id"],
+                "title": doc["title"],
+                "version": doc.get("version"),
+                "kind": doc["kind"],
+                "publication_status": doc["publication_status"],
+                "policy_authority": doc.get("policy_authority"),
+                "owner": doc["owner"],
+                "unit_name": org["name"],
+                "unit_level": org["level"],
+                "effective": [doc.get("effective_from"), doc.get("effective_to")],
+                "status": status,
+                "values": {
+                    s["policy_key"]: s["value"]
+                    for s in doc["sections"]
+                    if s["policy_key"] in ALL_BENEFIT_KEYS
+                },
+                "section_ids": [s["id"] for s in doc["sections"]],
+            }
+        )
+    rows.sort(key=lambda r: (r["effective"][0] or "0000-00-00", r["id"]))
+    return {
+        "profile": {
+            "id": profile_id,
+            "display_name": profile["display_name"],
+            "unit_path": unit_path,
+        },
+        "evaluation_date": date.isoformat(),
+        "topic": TOPIC,
+        "rows": rows,
+        "restricted_count": restricted_count,
+        "out_of_scope_count": out_of_scope_count,
+        "note": (
+            "Chỉ liệt kê tài liệu hồ sơ này ĐƯỢC ĐỌC và trong phạm vi áp dụng đơn vị. "
+            "Tài liệu chặn quyền không được xác nhận sự tồn tại, không hiển thị metadata."
+        ),
+    }
+
+
+def source_view(
+    profile_id: str,
+    section_id: str,
+    date_str: str | None = None,
+    dataset: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Kiểm chứng trích dẫn: nguyên văn đoạn + phiên bản tài liệu, phục vụ CHỈ khi
+    hồ sơ được phép đọc tài liệu đó.
+
+    Bất khả xác nhận: tài liệu không tồn tại, sai mã, hoặc ngoài quyền đọc trả về
+    CÙNG MỘT kết quả {"accessible": False} — gọi API phải phản ứng như nhau,
+    không cho biết tài liệu có tồn tại hay không.
+    """
+    dataset = dataset or load_dataset()
+    if not SECTION_ID_RE.match(section_id or ""):
+        return {"accessible": False}
+    profile = next((p for p in dataset["profiles"] if p["id"] == profile_id), None)
+    if profile is None:
+        return {"accessible": False}
+    doc = next(
+        (
+            d
+            for d in dataset["documents"]
+            if d["topic"] == TOPIC and any(s["id"] == section_id for s in d["sections"])
+        ),
+        None,
+    )
+    if doc is None or not set(profile.get("read_roles", [])) & set(doc.get("read_roles", [])):
+        return {"accessible": False}
+    sec = next(s for s in doc["sections"] if s["id"] == section_id)
+    unit_path = profile.get("unit_path") or []
+    date = _parse_date(date_str or dataset["evaluation_date"])
+    included, reasons = _base_filter(doc, profile, unit_path, date) if unit_path else (False, ["scope_out"])
+    org = next(o for o in dataset["organizations"] if o["id"] == doc["applicability"]["unit_id"])
+    return {
+        "accessible": True,
+        "section": {"id": sec["id"], "policy_key": sec["policy_key"], "value": sec["value"], "text": sec["text"]},
+        "doc": {
+            "id": doc["id"],
+            "title": doc["title"],
+            "version": doc.get("version"),
+            "kind": doc["kind"],
+            "publication_status": doc["publication_status"],
+            "approved_by": doc.get("approved_by"),
+            "effective": [doc.get("effective_from"), doc.get("effective_to")],
+            "owner": doc["owner"],
+            "policy_authority": doc.get("policy_authority"),
+            "unit_name": org["name"],
+            "unit_level": org["level"],
+        },
+        "with_profile": {
+            "visibility": "included" if included else "excluded",
+            "reasons": reasons,
+        },
+        "evaluation_date": date.isoformat(),
+    }

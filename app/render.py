@@ -68,6 +68,9 @@ def render_template(result: dict[str, Any], profile_unit_names: list[str] | None
         for c in result["conflicts"]:
             for v in c["values"]:
                 lines.append(f"• {format_value(c['policy_key'], v['value'])} — [{v['section_id']}] {v['title']}")
+            if c.get("note"):
+                # ghi rõ vì sao không ai được phép tự chọn: thiếu quan hệ quản lý nội dung
+                lines.append(f"→ {c['note']}")
         lines.append("Không chọn theo ngày cập nhật, cấp đơn vị hay trung bình số.")
         if result.get("escalate_to"):
             lines.append(f"HR phụ trách: {result['escalate_to']}.")

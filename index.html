@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Mission 2 MVP — Trí thức nội bộ theo đúng người hỏi</title>
-<meta name="description" content="Prototype: cùng câu hỏi, hai hồ sơ khác đơn vị → kết quả khác nhau theo quyền và hiệu lực. Dữ liệu giả lập." />
+<title>Mission 3 MVP — Trí thức nội bộ: kiểm chứng được</title>
+<meta name="description" content="M3: cùng câu hỏi, hai hồ sơ khác đơn vị → kết quả theo quyền và hiệu lực; bấm trích dẫn xem nguyên văn; timeline phiên bản; xung đột đa cấp có giải thích. Dữ liệu giả lập." />
 <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
@@ -12,8 +12,8 @@
   <div class="brand">
     <span class="brand-mark">A×N</span>
     <div>
-      <h1>AGENTLIZE × NEXTGEN 2026 · MISSION 2</h1>
-      <p>Hiện thực hóa — trả lời đúng tri thức, đúng bối cảnh, đúng phạm vi</p>
+      <h1>AGENTLIZE × NEXTGEN 2026 · MISSION 3 — CẢI TIẾN</h1>
+      <p>Trên nền M2 · Bấm trích dẫn xem nguyên văn · Timeline phiên bản · Xung đột đa cấp có giải thích</p>
     </div>
   </div>
   <span class="chip chip-warn">DỮ LIỆU GIẢ LẬP — không phải chính sách Appota thật</span>
@@ -58,28 +58,45 @@
       <summary>Danh mục tài liệu theo góc nhìn hồ sơ đang chọn</summary>
       <div id="docs-list" class="muted">Chưa tải.</div>
     </details>
+
+    <details class="panel docs-panel" id="timeline-panel">
+      <summary>M3 · Lịch sử phiên bản &amp; hiệu lực của hồ sơ đang chọn (theo ngày xét)</summary>
+      <div id="timeline-list" class="muted">Chưa tải.</div>
+    </details>
   </section>
 </main>
 
 <footer class="footer">
   <div class="footer-grid">
     <div>
-      <h3>Vòng lõi đã chứng minh</h3>
-      <p>Câu hỏi + bối cảnh người dùng → lọc quyền đọc → phạm vi &amp; hiệu lực →
-      resolve ngoại lệ/thay thế → câu trả lời có nguồn — <strong>quy tắc trước, LLM diễn đạt sau</strong>.</p>
+      <h3>Nền M2 (bất biến)</h3>
+      <p>Câu hỏi + bối cảnh → lọc quyền đọc → phạm vi &amp; hiệu lực → resolve ngoại lệ/thay thế →
+      trạng thái — <strong>quy tắc trước, LLM diễn đạt sau</strong>. Cấp sâu hơn không tự thắng:
+      phải có quan hệ <code>replaces</code>/<code>approved_overrides</code> đã khai báo.</p>
     </div>
     <div>
-      <h3>Hạn chế đã biết</h3>
-      <p>Chưa có SSO/HRIS (không tính số dư phép thật) · một chủ đề (nghỉ phép) ·
-      dữ liệu giả lập · LLM là Gemini free-tier, không có key thì chạy template bám nguyên văn nguồn.</p>
+      <h3>M3 thêm gì</h3>
+      <p>Bấm <code>[Dxx#sx]</code> xem nguyên văn tài liệu trong quyền (bất khả xác nhận với tài liệu bị chặn)
+      · Timeline phiên bản theo ngày xét · Xung đột nhiều cấp có giải thích + hướng xử lý
+      · 2 endpoint kiểm chứng: <code>/api/source</code>, <code>/api/timeline</code>.</p>
     </div>
     <div>
-      <h3>Kiểm thử</h3>
-      <p>7 ca chạy thật trong <code>tests/results.md</code> (6 ĐẠT · 1 CHƯA ĐẠT theo thiết kế).
-      Nguồn: <a href="https://github.com/" id="repo-link">GitHub repository</a>.</p>
+      <h3>Kiểm thử M3</h3>
+      <p>10 ca policy engine (<code>tests/results.md</code>) + 12 check Agent D
+      (<code>tests/reports/agentD_m3.md</code>) + regression 7 ca M2 giữ nguyên kỳ vọng.
+      Source: <a href="https://github.com/callmev1nc/appota-mission2-mvp" id="repo-link">GitHub repository</a>.</p>
     </div>
   </div>
 </footer>
+
+<!-- M3 · hộp thoại kiểm chứng trích dẫn: nguyên văn + phiên bản + trạng thái trong quyền hồ sơ -->
+<dialog id="viewer" class="viewer">
+  <div class="viewer-head">
+    <h3 id="viewer-title">Kiểm chứng trích dẫn</h3>
+    <button class="btn" id="viewer-close" type="button">Đóng ✕</button>
+  </div>
+  <div id="viewer-body" class="viewer-body muted">Đang tải…</div>
+</dialog>
 
 <script src="/app.js"></script>
 </body>

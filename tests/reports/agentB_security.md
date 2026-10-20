@@ -1,5 +1,5 @@
 # Agent B — Báo cáo quét bảo mật
-- Thời điểm: 2026-10-13 00:07 · live: https://mission2mvp.vercel.app
+- Thời điểm: 2026-10-20 20:51 · live: https://mission2mvp.vercel.app
 
 ## 1 · Repo hygiene
 

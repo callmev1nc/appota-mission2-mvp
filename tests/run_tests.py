@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
-"""Bộ kiểm thử Mission 2 — chạy thật trên policy engine + renderer.
+"""Bộ kiểm thử Mission 2+3 — chạy thật trên policy engine + renderer.
 
 Chạy offline (mặc định):
     python -X utf8 tests/run_tests.py
 Chạy qua API đã deploy:
     python -X utf8 tests/run_tests.py --live https://mission2mvp.vercel.app
+
+Mission 3: T01–T07 là regression (kỳ vọng giữ nguyên từ Mission 2);
+T08/T09/T11 là ca mới của M3 (đa cấp / xung đột đa cấp / biên hiệu lực 01/11);
+T10 + T12-CR nằm trong tests/reports/agentD_m3.py.
 
 Ghi kết quả ra tests/results.md theo format: Kỳ vọng → Thực tế → Đạt/Chưa → Học được.
 Exit code 1 nếu có ca FAIL (lỗi thật); ca "CHƯA ĐẠT" theo thiết kế không tính fail.
@@ -118,6 +122,9 @@ def check(case: dict, r: dict) -> list[str]:
     for s in exp.get("warning_contains", []):
         if not any(s in w for w in r.get("warnings", [])):
             fails.append(f"thiếu warning chứa `{s}`")
+    for s in exp.get("response_contains", []):
+        if s not in dump:
+            fails.append(f"response thiếu chuỗi `{s}`")
     return fails
 
 

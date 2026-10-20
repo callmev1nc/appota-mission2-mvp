@@ -1,172 +1,142 @@
-# Mission 2 — Hiện thực hóa: trả lời đúng tri thức theo đúng người hỏi
+# Mission 3 — Cải tiến: tri thức nội bộ được **kiểm chứng** theo đúng người hỏi
 
 [![CI/CD](https://github.com/callmev1nc/appota-mission2-mvp/actions/workflows/ci.yml/badge.svg)](https://github.com/callmev1nc/appota-mission2-mvp/actions/workflows/ci.yml)
 
-**Demo:** https://mission2mvp.vercel.app · **Repo:** https://github.com/callmev1nc/appota-mission2-mvp (public, không chứa API key / mật khẩu / dữ liệu thật — đã quét gitleaks trước khi push).
+**Demo:** https://mission2mvp.vercel.app · **Repo:** https://github.com/callmev1nc/appota-mission2-mvp
+(public, không chứa API key / mật khẩu / dữ liệu thật — quét gitleaks toàn lịch sử; **mốc Before của Mission 2 được tag `m2-mvp`** để đối chiếu Before→After ngay trên git.)
 Toàn bộ tổ chức, tài liệu, con số là **dữ liệu giả lập** — không phải chính sách Appota và không phải tư vấn pháp luật.
 
-> MVP chứng minh một giả thuyết: **chọn đúng bằng chứng (quyền + phạm vi + hiệu lực + ngoại lệ)
-> bằng quy tắc trước, LLM chỉ diễn đạt sau** — thì cùng một câu hỏi, hai người khác đơn vị
-> sẽ nhận kết quả đúng khác nhau, và hệ thống từ chối được khi thiếu căn cứ.
+> Mission 3 tiếp tục trên chính MVP của Mission 2 (không làm lại). Nền lõi vẫn là: **quy tắc chọn bằng chứng trước, LLM chỉ diễn đạt sau**. Mission 3 không thêm tính năng cho có — nó giải quyết 4 lỗ hổng thực tế khi đưa vào tổ chức thật, và phải chứng minh **tốt hơn bằng kết quả chạy lại được**.
 
 ---
 
-## 1 · Vấn đề và phần tôi chọn chứng minh
+## 0 · Phần Before → After bắt buộc
 
-Cùng câu hỏi *“Quy định nghỉ phép của tôi như thế nào?”*:
+```
+M2 (tag m2-mvp) ──→ Yêu cầu mới ──→ Quyết định ──→ M3 (mission3→main) ──→ Bằng chứng ──→ Giới hạn
+```
 
-| Hồ sơ | Kết quả trên demo |
-|---|---|
-| **U01** — Công ty An → Kỹ thuật → Nền tảng | **TRẢ LỜI**: 14 ngày/năm `[D03#s1]`, báo trước 3 ngày `[D01#s3]`, gửi quản lý trực tiếp `[D01#s4]`, mẫu KT-01 `[D07#s1]`, bàn giao NF-01 `[D08#s1]` |
-| **U03** — Công ty Bình → Vận hành → Hỗ trợ | **CHƯA KẾT LUẬN**: D05 ghi 16 ngày, D06 ghi 18 ngày, cùng hiệu lực, thiếu quan hệ thay thế → dẫn đúng 2 nguồn, chuyển HR Bình |
+| Yêu cầu mới (Lớp 1) | Trước (M2) | Sau (M3) | Bằng chứng |
+|---|---|---|---|
+| Kiểm chứng tài liệu được sử dụng | Chip `[Dxx#sx]` không bấm được | Bấm được (3 vị trí) → nguyên văn + phiên bản + hiệu lực + chủ sở hữu + trạng thái theo hồ sơ; tài liệu ngoài quyền → 404 không xác nhận tồn tại | T10 · Agent D 12/12 |
+| Nhiều cấp tổ chức (Tập đoàn→Công ty→Phòng→Nhóm) | Chỉ cặp cùng cấp | Chuỗi 3 tầng 12→14→13 phân giải **theo quan hệ khai báo**, kèm giải thích từng bước | T08-CHAIN3 |
+| Xung đột đa nguồn/đa cấp | Cùng cấp, không giải thích | Thêm cặp đa cấp → vẫn CHƯA KẾT LUẬN + ghi rõ "thiếu quan hệ nào, ai giải" | T09-EDGE-CONFLICT |
+| Phiên bản & thời điểm hiệu lực | Chỉ trong trace JSON | Timeline theo hồ sơ + ngày xét; đổi ngày → trạng thái đổi theo; mốc biên 01/11 trả 15 ngày | T11-BOUND-11-11 |
+| Từ chối khi thiếu căn cứ | 8 trạng thái | Giữ nguyên + giải trình rõ ràng trong UI/docs | T01–T07 tái chạy cùng kỳ vọng |
 
-Phần quan trọng nhất: **bộ máy chọn bằng chứng** (`app/engine.py`) — vì mọi lỗi nghiêm trọng
-(sai đơn vị, dùng bản hết hiệu lực/bản nháp, lộ tài liệu hạn chế, “chọn bừa” khi xung đột)
-đều xảy ra ở bước này, không ở bước viết văn của LLM.
+Chi tiết dài: `docs/m3_improvements.md` (quyết định + vì sao + hướng kỹ thuật) và `docs/before_after.md` (bằng chứng từng lệnh).
 
-## 2 · Kiến trúc — quy tắc trước, LLM sau
+## 1 · Vấn đề mới & phần tôi chọn cải thiện
+
+Bài toán thay đổi: tài liệu có hiệu lực theo thời gian, phân tầng nhiều cấp tổ chức, và không phải lúc nào cũng đủ căn cứ. Câu "Quy định nghỉ phép của tôi như thế nào?" **ngày 20/11** ở Phòng Kinh doanh An giờ đụng chuyện mới: định mức Phòng (13 ngày [D11#s1]) vs định mức Nhóm B2B mới ban hành (16 ngày [D12#s1]) — cùng hiệu lực, **chưa khai báo quan hệ**. M2 sẽ chỉ nói "CHƯA KẾT LUẬN". M3 nói thêm *vì sao chưa thể kết luận*, *căn cứ còn thiếu gì*, và *ai có thể giải* — mà vẫn không được phép tự chọn.
+
+| Hồ sơ | Trước (M2) | Sau (M3, cùng engine lõi) |
+|---|---|---|
+| **U01** — An → KT → Nền tảng | 14 ngày [D03#s1] | 14 ngày [D03#s1] — **không thay đổi** + bấm được chip xem nguyên văn D03 (v2.0, 01/09→31/10) |
+| **U05** — An → Kinh doanh *(mới)* | — | 13 ngày [D11#s1] chuỗi 3 tầng Tập đoàn→Công ty→Phòng, giải thích ra từng bước |
+| **U05 @20/11** | — | CHƯA KẾT LUẬN 13 [D11#s1] vs 16 [D12#s1] + note căn cứ thiếu + escalate HR An |
+
+## 2 · Kiến trúc — nền M2 bất biến, M3 thêm lớp kiểm chứng quanh lõi
 
 ```
 Câu hỏi + hồ sơ (profile_id, ngày xét)
         │
         ▼
-[1] Phân loại câu hỏi → các policy_key thực sự hỏi được
+[1] Phân loại câu hỏi → policy_key                    (bất biến từ M2)
+[2] Lọc: ĐỌC QUYỀN → PHẠM VI → PHÊ DUYỆT → HIỆU LỰC   (bất biến từ M2)
+[3] Resolve: replaces → approved_overrides → CONFLICT  (bất biến từ M2)
+[4] Trạng thái: ANSWER|CONFLICT|NO_AUTHORIZED...        (bất biến từ M2)
         │
         ▼
-[2] Lọc ứng viên theo thứ tự:  ĐỌC QUYỀN → PHẠM VI ĐƠN VỊ → PHÊ DUYỆT → HIỆU LỰC (ngày xét)
-        │                       (tài liệu bị chặn: không id, không tiêu đề, không gì cả)
-        ▼
-[3] Resolve từng policy_key:   replaces (bản thay thế) → approved override (ngoại lệ khai báo)
-        │                       → còn >1 giá trị bất đồng = CONFLICT (không top-k, không “mới hơn”)
-        ▼
-[4] Trạng thái: ANSWER | CONFLICT | NO_AUTHORIZED_EVIDENCE | NO_DATA | SOURCE_ONLY | NEED_CONTEXT
+[5] Diễn đáp: template/Gemini + guard                  (bất biến từ M2)
         │
-        ▼
-[5] Diễn đáp: template bám nguyên văn nguồn (mặc định) hoặc Gemini (nếu có key)
-        │      + guard: chặn chuỗi ngoài quyền & mã trích dẫn không thuộc tập nguồn
-        ▼
-Câu trả lời + [trích dẫn Dxx#sx] + trace chọn bằng chứng + ngữ cảnh đã gửi cho model
+M3 thêm ─┼→ [6] trace.chains: chuỗi giải thích "bản nào bị gỡ bởi quan hệ khai báo nào"
+         ┼→ conflicts kèm version/cấp/hiệu lực + note "căn cứ còn thiếu, ai phê duyệt"
+         ┼→ GET /api/source  — nguyên văn trích dẫn (404 bất khả xác nhận)
+         ┼→ GET /api/timeline — lịch sử phiên bản theo hồ sơ + ngày xét
+         └→ UI: chip bấm được + bảng timeline + panel "Vì sao"
 ```
 
-- **Danh tính không đổi theo câu hỏi.** Query là dữ liệu, không phải lệnh (ca X04).
-- **Không lộ metadata:** tài liệu không có quyền bị loại ngay ở [2], response chỉ ghi *số lượng*
-  bị loại, không id/tiêu đề (ca P01 — kiểm chứng cả trong payload gửi model).
-- **Lỗi LLM ≠ đổi kết luận:** evidence đã chọn độc lập; Gemini lỗi → `SOURCE_ONLY`
-  (hiện nguồn + thông báo chưa tạo được câu trả lời AI — ca C04).
+- **Bất khả xác nhận (new):** `/api/source` trả **cùng một 404/body** cho: mã không tồn tại ≡ mã ngoài quyền đọc ≡ hồ sơ lạ — không thể dùng endpoint để dò dữ liệu hạn chế.
+- **Cấp sâu hơn không tự thắng (mở từ M2):** được chứng minh bằng ca đối lập — D11 khai báo quan hệ → thắng (T08); D12 không khai báo → mâu thuẫn (T09).
+- **LLM vẫn không có thẩm quyền kết luận** — guard chặn rò rỉ chạy trên cả văn bản AI; chain/note sinh từ engine thuần.
 
 ## 3 · Chạy thử
 
-**Online:** mở https://mission2mvp.vercel.app — chọn hồ sơ → hỏi (hoặc bấm tình huống mẫu,
-hoặc nút *“Cùng câu hỏi — 2 người khác đơn vị”* để chạy song song U01 vs U03).
+**Online:** https://mission2mvp.vercel.app — chọn hồ sơ → hỏi; hoặc bấm các tình huống mẫu mới:
+`⛓ T08 · U05 chuỗi 3 tầng` · `⚔️ T09 · U05 ngày 20/11 mâu thuẫn đa cấp` · `📅 T11 · U02 mốc 01/11`.
 
 **Local:**
 
 ```powershell
 pip install -r requirements.txt
-uvicorn api.index:app --port 8000        # mở http://localhost:8000
+python -m uvicorn api.index:app --port 8000        # http://localhost:8000
 ```
 
-Không cần key nào để chạy local. **Bản demo trên Vercel đã set `GEMINI_API_KEY`
-(free tier — `gemini-flash-lite-latest`)**: mặc định `auto` → Gemini diễn đạt, lỗi
-hoặc rate limit → tự fallback template bám nguyên văn nguồn; key chỉ nằm trong
-Vercel Secret, không trong repo. Local chưa set key → luôn dùng template.
+Không cần key nào; demo prod có `GEMINI_API_KEY` (free tier) — lỗi → fallback template bám nguyên văn nguồn.
 
-**Kiểm thử (7 ca, chạy thật):**
+**Kiểm thử (10 ca policy + 3 pin agent):**
 
 ```powershell
-python -X utf8 tests\run_tests.py                  # offline — import engine trực tiếp
-python -X utf8 tests\run_tests.py --live https://mission2mvp.vercel.app   # trên bản deploy
+python -X utf8 tests/run_tests.py                                   # offline
+python -X utf8 tests/run_tests.py --live https://mission2mvp.vercel.app
+python -X utf8 tests/reports/agentD_m3.py                           # M3: viewer/timeline/CR
+python -X utf8 tests/reports/agentD_m3.py --live https://mission2mvp.vercel.app
 ```
 
-Kết quả trong [`tests/results.md`](tests/results.md):
+Kết quả trong `tests/results.md` + `tests/reports/`:
 
 | Ca | Tình huống | Kết luận |
 |---|---|---|
-| T01-A01 | U01 — hồ sơ có ngoại lệ hợp lệ | **ĐẠT** |
-| T02-A03 | U03 — hai nguồn xung đột 16 vs 18 | **ĐẠT** (chưa kết luận đúng) |
-| T03-P01 | U01 — xin tài liệu ngoài quyền | **ĐẠT** (từ chối, không rò rỉ) |
-| T04-V03 | Mốc 31/10 — D04 mới hơn nhưng chưa hiệu lực | **ĐẠT** |
-| T05-X04 | Prompt injection đòi bí mật | **ĐẠT** |
-| T06-BALANCE | Hỏi số dư — MVP không có HRIS | **CHƯA ĐẠT theo thiết kế** |
-| T07-C04 | LLM lỗi sau khi chọn bằng chứng | **ĐẠT** (chỉ hiện nguồn) |
+| T01–T07 | **Regression Mission 2 — kỳ vọng giữ nguyên từng chữ** | 6 ĐẠT · T06 CHƯA ĐẠT theo thiết kế |
+| T08-CHAIN3 | **M3** — chuỗi 3 tầng phân giải theo quan hệ khai báo | ĐẠT |
+| T09-EDGE-CONFLICT | **M3** — mâu thuẫn đa cấp chưa khai báo quan hệ | ĐẠT (chưa kết luận đúng + note giải thích) |
+| T11-BOUND-11-11 | **M3** — biên hiệu lực mốc 01/11 | ĐẠT |
+| T10 (Agent D) | **M3** — kiểm chứng trích dẫn + bất khả xác nhận | 12/12 check PASS |
+| T12-CR (Agent D) | **M3** — khung Change Request: dữ liệu CR chạy được không cần sửa lõi | PASS |
 
-Tổng: **6 ĐẠT · 1 CHƯA ĐẠT theo thiết kế · 0 lỗi kiểm thử** (cả offline lẫn trên bản deploy).
+Tổng: **9 PASS · 1 LIMITED (theo thiết kế) · 0 FAIL** (run_tests) + **Agent A (oracle 24): 16 PASS·8 PASS+·0 FAIL** + **Agent B (bảo mật): 0 issues** + **Agent C (smoke): 34/34** + **Agent D (M3): 12/12**.
 
 **CI/CD (GitHub Actions — `.github/workflows/ci.yml`):**
 
 ```
-push / PR ─→ [test]   compile + import · gitleaks toàn lịch sử · 7 ca offline
-              └→ [deploy] uv + vercel build --prod → Vercel production   (chỉ nhánh main)
-                   └→ [live] smoke endpoint · 7 ca trên bản deploy · quét rò rỉ D09/canary
+push/PR ─→ [test]   compile+import · gitleaks toàn lịch sử · 10 ca offline · Agent D offline
+             └→ [deploy] uv + vercel build --prod → Vercel production   (chỉ main)
+                  └→ [live] smoke UI M3 · 10 ca trên deploy · Agent D trên deploy · quét rò rỉ canary
 ```
 
-Mỗi lần push vào `main` tự chạy đủ: quét secret (chặn), test, deploy, rồi kiểm thử lại
-trên bản deploy thật. Token Vercel chỉ nằm trong GitHub Secrets (`VERCEL_TOKEN`,
-`VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`) — không bao giờ có trong file.
-
-**Kiểm thử đa tác tử — 3 pin chạy độc lập trên bản deploy + oracle 24 ca:**
-
-| Pin | Phạm vi | Script | Kết quả |
-|---|---|---|---|
-| A — đúng giả thuyết | Đối chiếu **toàn bộ 24 ca oracle** (kỳ vọng Mission 1) với engine | `tests/reports/agentA_oracle.py` | **16 PASS · 8 PASS+ · 0 FAIL** |
-| B — bảo mật | gitleaks lịch sử, leak battery (4 câu hỏi × 3 hồ sơ), adversarial X01–X04/P04, malformed, CORS | `tests/reports/agentB_security.py` | **0 vấn đề** |
-| C — smoke | tĩnh + contract API + 4 mốc hiệu lực + chế độ LLM + anti-XSS + latency | `tests/reports/agentC_smoke.py` | **28/28 PASS** (avg 333ms, worst 412ms) |
-
-Báo cáo chi tiết: [`tests/reports/`](tests/reports/). Các pin đã **tìm và sửa thật**:
-echo câu hỏi bị gỡ khỏi response (ngăn echo chuỗi cấm), `/api/documents` che luôn *id*
-của tài liệu hạn chế, validate `question`/`date` (trước đây 500), phân loại câu hỏi
-“định mức/nhóm”, escalate khi thiếu dữ liệu, tách marker HR khỏi phần quyền lợi (P02).<br>
-“PASS+” = engine trả đúng mọi dữ kiện oracle yêu cầu nhưng trích thêm nguồn hợp lệ
-(superset, không mâu thuẫn) — do engine mở rộng cụm thủ tục khi hỏi cấp đơn vị.
-
-## 4 · Quyết định chính và đánh đổi
+## 4 · Quyết định chính và đánh đổi (M3)
 
 | Quyết định | Vì sao | Đánh đổi |
 |---|---|---|
-| Quy tắc chọn bằng chứng bằng Python, không để LLM quyết | Truy trình được kiểm chứng, deterministic | Mới phục vụ chủ đề nghỉ phép có cấu trúc metadata |
-| Ngoại lệ / thay thế phải **khai báo** (`approved_overrides`, `replaces`) | Giải thích được, không “mới hơn thắng” | HR phải quản metadata đúng — sai metadata vẫn ra kết quả sai |
-| Xung đột → **không kết luận**, chuyển HR | An toàn hơn trả lời dứt khoát sai | Trải nghiệm “chưa trả lời” cần người dùng hiểu |
-| Template mặc định, Gemini tùy chọn | Demo không bao giờ chết vì quota/key | Template nghèo văn phong hơn LLM |
-| Hồ sơ giả lập chọn tay (không SSO) | Dành 3 ngày cho logic thay vì auth | Chưa chứng minh bảo mật danh tính thật |
+| Giải thích bằng **quan hệ khai báo**, không thêm "cấp thấp tự nhiên thắng" | Truy vết được từng bước, không đổi giả thuyết M2 | Hầu hết tổ chức thật quen logic "nguồn mới hơn ở cấp thấp tự nhiên thắng" — sản phẩm yêu cầu metadata đúng |
+| Viewer áp **bất khả xác nhận** (KHÔNG phân biệt "không tồn tại" và "bị chặn") | Endpoint mới = mặt dò dữ liệu mới | UX hơi khó chịu khi mã gõ sai (chỉ nhận thông báo chung chung) |
+| Timeline lọc **quyền + phạm vi + ngày xét**, không phải ngày hệ thống | "Của tôi" nghĩa là đúng bối cảnh hồ sơ | Không xem được tài liệu của phòng khác dù đọc được (hiện trong danh mục với lý do scope_out) |
+| Khung CR = tiêm dataset thay vì fork code | CR nhập dữ liệu → chạy ngay, không sửa lõi | Test cần dataset cú pháp đúng (được Agent D kiểm chứng) |
+| **Chủ động không làm**: cho LLM quyết / SSO/HRIS / chủ đề mới / frontend framework mới | Giữ nguyên giả thuyết "quy tắc chọn bằng chứng trước, LLM diễn đạt sau" và ưu tiên chiều sâu hơn chiều rộng | T06 số dư vẫn chưa đáp được — trung thực ghi là LIMITED |
 
-## 5 · Hạn chế đã biết (không che)
+## 5 · Hạn chế đã biết (không che) — cập nhật sau M3
 
-1. **Không có HRIS/chấm công** → không trả lời được “còn bao nhiêu ngày phép” (T06) — chỉ trả định mức năm và nói rõ giới hạn.
-2. **Một chủ đề** (nghỉ phép) — metadata model đủ chung cho chủ đề khác nhưng chưa tích hợp.
-3. **Dữ liệu giả lập** — không xác nhận chính sách Appota hay bất kỳ thực tế nào.
-4. **Gemini free tier** — bản demo set key free tier (`gemini-flash-lite-latest`); rate limit
-   hoặc lỗi → fallback template ngay (không bao giờ chết demo); guard chặn rò rỉ chạy trên cả
-   văn bản AI. Chưa set key (local mặc định) → dùng template.
-5. **Adversarial có giới hạn** — đã chạy battery 24 ca oracle (`agentA_oracle.py`) và pin bảo mật (leak/adversarial/malformed) thật trên deploy, nhưng chưa red-team mở rộng (fuzz, đo rate limit, thử đa người dùng thật).
-6. **Prompt injection** được kiểm bằng guard + test mẫu (T05, X01–X04) chạy thật, chưa red-team bằng người.
+1. **Vẫn một chủ đề** (nghỉ phép) — khả năng mở rộng chứng minh qua khung T12-CR nhưng chưa có sản phẩm chạy đa chủ đề.
+2. **Không SSO/HRIS** — T06 số dư phép vẫn CHƯA ĐẠT theo thiết kế; danh tính là hồ sơ giả lập chọn tay.
+3. **Dữ liệu giả lập** — không xác nhận chính sách Appota thật; slot Change Request đang chờ reviewer/HR chỉ định (khung T12-CR sẵn sàng chạy ngay khi CR bổ sung dữ liệu).
+4. **Gemini free tier** — lỗi → template fallback ngay; guard chặn rò rỉ trên văn bản AI.
+5. **Anti-XSS/CSRF của viewer** — chạy bằng heuristic Agent C + escape toàn diện, chưa red-team mở rộng; static server không có CSRF surface rõ nhưng chưa được kiểm thử chuyên sâu.
+6. **Metadata quan hệ vẫn do người nhập** — sai replaces/overrides (thiếu approved_by) hệ thống phải từ chối kết luận chứ không tự chọn; nhu cầu nhìn từ HR: cần công cụ quản lý quan hệ (chưa làm).
 
-## 6 · Ba câu hỏi bắt buộc
+## 6 · Ba câu hỏi bắt buộc (Mission 3)
 
-**① Phần quan trọng nhất chọn chứng minh?** → Bộ máy chọn bằng chứng
-(`app/engine.py`): lọc đọc quyền → phạm vi → hiệu lực → resolve ngoại lệ/thay thế →
-kết luận hoặc từ chối. Nếu phần này đúng, mọi lỗi “trả lời sai/ngộ độc” đều chặn được
-*trước* khi LLM diễn đạt — nên hướng giải pháp khả thi: LLM có thể thay thế, cải tiến hoặc
-tắt mà kết luận không đổi (ca C04 chứng minh điều đó).
+**① Ưu tiên thay đổi gì / chủ động chưa làm điều gì, vì sao?**
+Chọn ưu tiên ba nhóm: (a) kiểm chứng trích dẫn — thứ duy nhất nằm trong yêu cầu nhưng M2 chưa có sản phẩm; (b) dữ liệu + giải thích đa cấp — chặn mối nguy "cấp thấp tự nhiên thắng" và làm CONFLICT có giải trình; (c) timeline theo ngày xét — chứng minh hiệu lực "theo bối cảnh hồ sơ" ngay trên UI. **Chủ động chưa làm**: cho LLM quyết kết quả (giả thuyết lõi), SSO/HRIS, chủ đề mới, frontend mới — vì Mission 3 chấm "hiểu bài toán → lựa chọn → kiểm chứng", nên giữ bằng chứng regression nguyên trạng (T01–T07 không đổi một kỳ vọng, oracle 24 vẫn 16/8/0) để Before/After có nghĩa.
 
-**② Đổi gì so với Mission 1?** → (a) Từ “24 ca là kỳ vọng trên giấy” thành **7 ca chạy thật**
-và cả 24 fixture giữ nguyên làm oracle — nay đã được đối chiếu thật bằng
-`tests/reports/agentA_oracle.py` (0 FAIL); (b) thiết kế “một app Python” thành
-**engine Python + API Vercel + trang tĩnh** để có link demo; (c) thêm **template fallback +
-content guard** — Mission 1 chưa có lớp chặn rò rỉ sau khi LLM sinh văn bản;
-(d) trace theo từng section thay vì cả tài liệu — phát hiện khi dựng assertion cho T01
-(sửa trước khi chạy, T01 xác nhận), cộng hai lỗi bắt được ở lần chạy đầu (`KeyError` khi
-nhóm theo giá trị; expectation T07 sai — engine đúng, test sai).
+**② Thay đổi tạo khác biệt lớn nhất & bằng chứng nào?**
+Khác biệt lớn nhất là lớp **kiểm chứng quanh lõi**: bấm `Dxx#sx` ra nguyên văn + phiên bản + trạng thái trong quyền, gắn với panel "Vì sao" (trace.chains) và conflict note "căn cứ còn thiếu". Bằng chứng: Agent D 12/12 (bất khả xác nhận — kiểm cả offline lẫn endpoint thật sau deploy), T08/T09/T11 ĐẠT, toàn bộ 5 pin tái chạy xanh: 10 ca (9 PASS + 1 LIMITED) · oracle 16/8/0 · Agent B 0 issues · Agent C 34/34 · CI deploy + live hồi quy (xem `tests/results.md`, `tests/reports/agentD_m3.md`, `docs/before_after.md`).
 
-**③ Trường hợp dễ trả lời sai nhất, kiểm soát ra sao?** → **Metadata thiếu/sai của ngoại lệ**
-(ví dụ D03 mất trường `approved_overrides`): hệ thống sẽ thấy hai giá trị cùng hiệu lực và
-*phải* chuyển HR thay vì chọn 14 hoặc quay về 12 — logic này có ca riêng chờ chạy khi có
-fixture sửa đổi; và **rò rỉ tài liệu hạn chế qua metadata** (tiêu đề, trace) — kiểm soát bằng
-cách loại ngay ở tầng đọc quyền + guard chuỗi bị cấm chạy trên *toàn bộ response* và
-ngữ cảnh gửi model (ca P01 assert cả ba vị trí).
+**③ Nếu đưa cho người dùng thật ngày mai, rủi ro lớn nhất còn lại? Xử lý như thế nào?**
+Rủi ro nhất: **metadata quan hệ (replaces/approved_overrides) do con người nhập** — nếu nhập sai approved_by/scope, hệ thống sẽ từ chối kết luận và chuyển HR thay vì trả lời dứt khoát sai (đây là lựa chọn an toàn có chủ đích); nhưng nếu người quản lý tài liệu bỏ bắt buộc ghi quan hệ, nhiều câu sẽ dừng ở CHƯA KẾT LUẬN. Xử lý kế tiếp: (1) công cụ quản lý quan hệ cho HR + validation tại lúc nhập liệu; (2) audit log "từ chối vì thiếu quan hệ khai báo" để HR thấy điểm tắc; (3) tích hợp HRIS thật để đóng ca T06 (số dư phép).
 
-## 7 · Nhật ký AI
+## 7 · Video cải tiến (≤5 phút) — xem `docs/video_m3_script.md`
 
-Tôi dùng AI (OpenCode) để phân tích đề, dựng engine, viết test và rà soát từng ca chạy thật.
-Quyết định số phận dữ liệu (khi nào kết luận, khi nào từ chối) **không** delegate cho LLM —
-đó chính là giả thuyết của sản phẩm này. Prompt/trao đổi chính được tóm tắt trong 3 câu trả lời
-bắt buộc; kết quả kiểm thử là bằng chứng chạy thật, không phải kỳ vọng.
+## 8 · Nhật ký AI
+
+Tôi dùng AI (OpenCode) phân tích đề, thiết kế dữ liệu đa cấp, làm engine chain/timeline/viewer, viết test và rà soát từng ca chạy thật (10 ca + 5 pin). Quyết định "khi nào kết luận / khi nào từ chối" **không** delegate cho LLM — là giả thuyết sản phẩm từ Mission 1 giữ nguyên ở Mission 3.
